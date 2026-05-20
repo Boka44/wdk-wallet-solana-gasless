@@ -199,11 +199,15 @@ export default class WalletAccountSolanaGasless extends WalletAccountReadOnlySol
   }
 
   /**
-   * todo
+   * Prepares a transaction message for gasless payment and signing.
+   * - Ensures the transaction lifetime.
+   * - Sets the paymaster address as the fee payer.
+   * - Appends the payment instruction.
+   * - Upgrades the transaction owner to a signer based on {@link AccountRole}.
    *
    * @private
    * @param {SolanaTransaction} tx - The transaction.
-   * @returns {Promise<TransactionMessage>}
+   * @returns {Promise<{ fee: bigint, transactionMessage: TransactionMessage }>} The fee and populated transaction message.
    */
   async _populateTransactionMessage (tx) {
     let draft = tx.to !== undefined && tx.value !== undefined

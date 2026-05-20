@@ -90,7 +90,17 @@ export default class WalletAccountSolanaGasless extends WalletAccountReadOnlySol
      * Disposes the wallet account, erasing the private key from the memory.
      */
     dispose(): void;
-    /** @private */
+    /**
+     * Prepares a transaction message for gasless payment and signing.
+     * - Ensures the transaction lifetime.
+     * - Sets the paymaster address as the fee payer.
+     * - Appends the payment instruction.
+     * - Upgrades the transaction owner to a signer based on {@link AccountRole}.
+     *
+     * @private
+     * @param {SolanaTransaction} tx - The transaction.
+     * @returns {Promise<{ fee: bigint, transactionMessage: TransactionMessage }>} The fee and populated transaction message.
+     */
     private _populateTransactionMessage;
     /**
      * Creates a new {@link KeyPairSigner} from a 32-bytes `Uint8Array` private key.
