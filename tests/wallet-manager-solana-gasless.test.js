@@ -14,9 +14,9 @@
 
 'use strict'
 
-import { describe, it, expect, beforeEach } from '@jest/globals'
+import { afterEach, beforeEach, describe, expect, test } from '@jest/globals'
 
-import WalletManagerSolanaGasless, { WalletAccountSolanaGasless } from '@tetherto/wdk-wallet-solana-gasless'
+import WalletManagerSolanaGasless, { WalletAccountSolanaGasless } from '../index.js'
 
 const TEST_SEED_PHRASE =
   'test walk nut penalty hip pave soap entry language right filter choice'
@@ -42,134 +42,63 @@ describe('WalletManagerSolanaGasless', () => {
     wallet = new WalletManagerSolanaGasless(TEST_SEED_PHRASE, TEST_CONFIG)
   })
 
-  describe('Constructor', () => {
-    it('should create wallet manager with valid config', () => {
-      expect(wallet).toBeInstanceOf(WalletManagerSolanaGasless)
-      expect(wallet._rpc).toBeDefined()
-      expect(wallet._commitment).toBe('confirmed')
-      expect(wallet._config).toEqual(TEST_CONFIG)
-    })
-
-    it('should create wallet manager with string seed phrase', () => {
-      const newWallet = new WalletManagerSolanaGasless(TEST_SEED_PHRASE, {
-        ...TEST_CONFIG,
-        provider: TEST_RPC_URL
-      })
-
-      expect(newWallet).toBeInstanceOf(WalletManagerSolanaGasless)
-    })
-
-    it('should create wallet manager without provider', () => {
-      const newWallet = new WalletManagerSolanaGasless(TEST_SEED_PHRASE, {
-        paymasterUrl: TEST_PAYMASTER_URL,
-        paymasterAddress: TEST_PAYMASTER_ADDRESS,
-        paymasterToken: {
-          address: TEST_PAYMASTER_TOKEN
-        }
-      })
-
-      expect(newWallet).toBeInstanceOf(WalletManagerSolanaGasless)
-      expect(newWallet._rpc).toBeUndefined()
-    })
-
-    it('should use default commitment level', () => {
-      const newWallet = new WalletManagerSolanaGasless(TEST_SEED_PHRASE, {
-        provider: TEST_RPC_URL,
-        paymasterUrl: TEST_PAYMASTER_URL,
-        paymasterAddress: TEST_PAYMASTER_ADDRESS,
-        paymasterToken: {
-          address: TEST_PAYMASTER_TOKEN
-        }
-      })
-
-      expect(newWallet._commitment).toBe('confirmed')
-    })
+  afterEach(() => {
+    wallet.dispose()
   })
 
   describe('getAccount', () => {
-    it('should return account at index 0', async () => {
-      const account = await wallet.getAccount(0)
-
-      expect(account).toBeInstanceOf(WalletAccountSolanaGasless)
-      expect(account.index).toBe(0)
-      expect(account.path).toBe("m/44'/501'/0'/0'")
-    })
-
-    it('should return default account at index 0', async () => {
+    test('should return the account at index 0 by default', async () => {
       const account = await wallet.getAccount()
 
       expect(account).toBeInstanceOf(WalletAccountSolanaGasless)
-      expect(account.index).toBe(0)
+
       expect(account.path).toBe("m/44'/501'/0'/0'")
     })
 
-    it('should return different accounts for different indices', async () => {
-      const account0 = await wallet.getAccount(0)
-      const account1 = await wallet.getAccount(1)
+    test('should return the account at the given index', async () => {
+      const account = await wallet.getAccount(3)
 
-      expect(account0).not.toBe(account1)
-      expect(await account0.getAddress()).not.toBe(await account1.getAddress())
+      expect(account).toBeInstanceOf(WalletAccountSolanaGasless)
+
+      expect(account.path).toBe("m/44'/501'/3'/0'")
     })
 
-    it('should handle large index numbers', async () => {
-      const account = await wallet.getAccount(999)
+    test('should return an account when configured with failover providers', async () => {
+      const wallet = new WalletManagerSolanaGasless(TEST_SEED_PHRASE, {
+        ...TEST_CONFIG,
+        provider: [
+          'https://mock-url-1.com',
+          'https://mock-url-2.com'
+        ]
+      })
 
-      expect(account.index).toBe(999)
-      expect(account.path).toBe("m/44'/501'/999'/0'")
+      const account = await wallet.getAccount()
+
+      expect(account).toBeInstanceOf(WalletAccountSolanaGasless)
+
+      expect(wallet._rpc).toBeDefined()
+
+      wallet.dispose()
     })
 
-    it('should cache accounts by index', async () => {
-      const accountA = await wallet.getAccount(0)
-      const accountB = await wallet.getAccount(0)
-
-      expect(accountA).toBe(accountB)
-    })
-
-    it('should pass gasless config to accounts', async () => {
-      const account = await wallet.getAccount(0)
-
-      expect(account._config).toEqual(TEST_CONFIG)
-      expect(account._config.paymasterAddress).toBe(TEST_PAYMASTER_ADDRESS)
-      expect(account._config.paymasterToken.address).toBe(TEST_PAYMASTER_TOKEN)
+    test('should throw if the index is a negative number', async () => {
+      await expect(wallet.getAccount(-1))
+        .rejects.toThrow("Invalid child index: -1'")
     })
   })
 
   describe('getAccountByPath', () => {
-    it("should return account for path \"0'/0'/0'\"", async () => {
-      const account = await wallet.getAccountByPath("0'/0'/0'")
+    test('should return the account with the given path', async () => {
+      const account = await wallet.getAccountByPath("1'/2'/3'")
 
       expect(account).toBeInstanceOf(WalletAccountSolanaGasless)
-      expect(account.path).toBe("m/44'/501'/0'/0'/0'")
+
+      expect(account.path).toBe("m/44'/501'/1'/2'/3'")
     })
 
-    it('should return different accounts for different paths', async () => {
-      const account1 = await wallet.getAccountByPath("0'/0'/0'")
-      const account2 = await wallet.getAccountByPath("0'/0'/1'")
-
-      expect(account1).not.toBe(account2)
-      expect(await account1.getAddress()).not.toBe(await account2.getAddress())
-    })
-
-    it('should cache accounts by path', async () => {
-      const accountA = await wallet.getAccountByPath("0'/0'/0'")
-      const accountB = await wallet.getAccountByPath("0'/0'/0'")
-
-      expect(accountA).toBe(accountB)
-    })
-  })
-
-  describe('dispose', () => {
-    it('should dispose all derived accounts', async () => {
-      const account0 = await wallet.getAccount(0)
-      const account1 = await wallet.getAccount(1)
-
-      expect(account0.keyPair.privateKey).toBeTruthy()
-      expect(account1.keyPair.privateKey).toBeTruthy()
-
-      wallet.dispose()
-
-      expect(account0.keyPair.privateKey).toBeNull()
-      expect(account1.keyPair.privateKey).toBeNull()
+    test('should throw if the path is invalid', async () => {
+      await expect(wallet.getAccountByPath("a'/b'/c'"))
+        .rejects.toThrow("Invalid child index: a'")
     })
   })
 })

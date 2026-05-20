@@ -14,12 +14,12 @@
 
 'use strict'
 
-import { describe, it, expect, beforeAll, beforeEach, afterEach, jest } from '@jest/globals'
+import { describe, test, expect, beforeAll, beforeEach, afterEach, jest } from '@jest/globals'
 
 import { getCompiledTransactionMessageDecoder } from '@solana/transaction-messages'
 import { AccountRole } from '@solana/kit'
 
-import WalletManagerSolanaGasless, { WalletAccountReadOnlySolanaGasless, WalletAccountSolanaGasless } from '@tetherto/wdk-wallet-solana-gasless'
+import WalletManagerSolanaGasless, { WalletAccountReadOnlySolanaGasless, WalletAccountSolanaGasless } from '../index.js'
 
 const TEST_SEED_PHRASE =
   'test walk nut penalty hip pave soap entry language right filter choice'
@@ -83,9 +83,8 @@ describe('WalletAccountSolanaGasless', () => {
     account = await wallet.getAccount(0)
   })
 
-  describe('Wallet Properties', () => {
-    describe('seed', () => {
-      it('should throw if invalid words in seed phrase', () => {
+  describe('constructor', () => {
+      test('should throw if invalid words in seed phrase', () => {
         expect(() => {
           new WalletAccountSolanaGasless(
             'invalid word that does not exist test test test test test test test',
@@ -95,7 +94,7 @@ describe('WalletAccountSolanaGasless', () => {
         }).toThrow('The seed phrase is invalid')
       })
 
-      it('should accept valid BIP-39 seed phrase as string', () => {
+      test('should accept valid BIP-39 seed phrase as string', () => {
         const account = new WalletAccountSolanaGasless(
           TEST_SEED_PHRASE,
           "0'/0'/0'",
@@ -105,15 +104,15 @@ describe('WalletAccountSolanaGasless', () => {
         expect(account).toBeDefined()
         expect(account).toBeInstanceOf(WalletAccountSolanaGasless)
       })
-    })
+  })
 
-    describe('getAddress', () => {
-      it('should return a valid Solana address', async () => {
+  describe('address', () => {
+      test('should return a valid Solana address', async () => {
         const address = await account.getAddress()
         expect(address).toMatch(TEST_ACCOUNT_ADDRESS)
       })
 
-      it('should return different addresses for different account indices', async () => {
+      test('should return different addresses for different account indices', async () => {
         const account0 = await wallet.getAccount(0)
         const account1 = await wallet.getAccount(1)
         const account2 = await wallet.getAccount(2)
@@ -127,7 +126,7 @@ describe('WalletAccountSolanaGasless', () => {
         )
       })
 
-      it('should return different addresses for different derivation paths', async () => {
+      test('should return different addresses for different derivation paths', async () => {
         const accountPath1 = await wallet.getAccountByPath("0'/0'/0'")
         const accountPath2 = await wallet.getAccountByPath("0'/0'/1'")
         const accountPath3 = await wallet.getAccountByPath("1'/0'/0'")
@@ -144,8 +143,8 @@ describe('WalletAccountSolanaGasless', () => {
       })
     })
 
-    describe('keyPair', () => {
-      it('should have consistent keyPair', () => {
+  describe('keyPair', () => {
+      test('should have consistent keyPair', () => {
         const keyPair = account.keyPair
         expect(Buffer.from(keyPair.publicKey).toString('hex')).toBe(
           '2b2c715c2cf24db57e95a44df34cb424de2460e86c4f6ebe7ba62b574830de19'
@@ -155,7 +154,7 @@ describe('WalletAccountSolanaGasless', () => {
         )
       })
 
-      it('should have different key pairs for different accounts', async () => {
+      test('should have different key pairs for different accounts', async () => {
         const account0 = await wallet.getAccount(0)
         const account1 = await wallet.getAccount(1)
 
@@ -168,36 +167,36 @@ describe('WalletAccountSolanaGasless', () => {
       })
     })
 
-    describe('path', () => {
-      it('should follow SLIP-0010 Solana derivation path format', () => {
+  describe('path', () => {
+      test('should follow SLIP-0010 Solana derivation path format', () => {
         expect(account.path).toMatch("m/44'/501'/0'/0'")
       })
 
-      it('should have correct path for account index 5', async () => {
+      test('should have correct path for account index 5', async () => {
         const account5 = await wallet.getAccount(5)
         expect(account5.path).toBe("m/44'/501'/5'/0'")
       })
 
-      it('should have correct path for custom derivation', async () => {
+      test('should have correct path for custom derivation', async () => {
         const customAccount = await wallet.getAccountByPath("1'/2'/3'")
         expect(customAccount.path).toBe("m/44'/501'/1'/2'/3'")
       })
     })
 
-    describe('index', () => {
-      it('should return correct index for account 0', async () => {
+  describe('index', () => {
+      test('should return correct index for account 0', async () => {
         const account0 = await wallet.getAccount(0)
         expect(account0.index).toBe(0)
       })
 
-      it('should return correct index for account 999', async () => {
+      test('should return correct index for account 999', async () => {
         const account999 = await wallet.getAccount(999)
         expect(account999.index).toBe(999)
       })
     })
 
-    describe('dispose', () => {
-      it('should clear private key from memory', async () => {
+  describe('dispose', () => {
+      test('should clear private key from memory', async () => {
         const tempWallet = new WalletManagerSolanaGasless(
           TEST_SEED_PHRASE,
           TEST_CONFIG
@@ -211,7 +210,7 @@ describe('WalletAccountSolanaGasless', () => {
         expect(tempAccount.keyPair.privateKey).toBeNull()
       })
 
-      it('should dispose all accounts when wallet manager is disposed', async () => {
+      test('should dispose all accounts when wallet manager is disposed', async () => {
         const tempWallet = new WalletManagerSolanaGasless(
           TEST_SEED_PHRASE,
           TEST_CONFIG
@@ -229,7 +228,7 @@ describe('WalletAccountSolanaGasless', () => {
         expect(account1.keyPair.privateKey).toBeNull()
       })
 
-      it('should keep public key accessible after disposal', async () => {
+      test('should keep public key accessible after disposal', async () => {
         const tempWallet = new WalletManagerSolanaGasless(
           TEST_SEED_PHRASE,
           TEST_CONFIG
@@ -241,11 +240,9 @@ describe('WalletAccountSolanaGasless', () => {
         expect(tempAccount.keyPair.publicKey).toBeDefined()
       })
     })
-  })
 
-  describe('Message Signing and Verification', () => {
-    describe('sign', () => {
-      it('should produce consistent signature for a message', async () => {
+  describe('sign', () => {
+      test('should produce consistent signature for a message', async () => {
         const signature = await account.sign('Test message')
 
         expect(signature).toBe(
@@ -253,7 +250,7 @@ describe('WalletAccountSolanaGasless', () => {
         )
       })
 
-      it('should produce different signatures for different messages', async () => {
+      test('should produce different signatures for different messages', async () => {
         const signature1 = await account.sign('Message 1')
         const signature2 = await account.sign('Message 2')
 
@@ -265,7 +262,7 @@ describe('WalletAccountSolanaGasless', () => {
         )
       })
 
-      it('should throw error after account disposal', async () => {
+      test('should throw error after account disposal', async () => {
         const tempWallet = new WalletManagerSolanaGasless(
           TEST_SEED_PHRASE,
           TEST_CONFIG
@@ -278,7 +275,6 @@ describe('WalletAccountSolanaGasless', () => {
 
         await expect(tempAccount.sign('test message')).rejects.toThrow()
       })
-    })
   })
 
   describe('sendTransaction', () => {
@@ -303,8 +299,7 @@ describe('WalletAccountSolanaGasless', () => {
       account._paymaster = originalPaymaster
     })
 
-    describe('Input Validation', () => {
-      it('should throw if paymaster not configured', async () => {
+    test('should throw if paymaster not configured', async () => {
         const noPaymasterAccount = new WalletAccountSolanaGasless(
           TEST_SEED_PHRASE,
           "0'/0'",
@@ -319,9 +314,9 @@ describe('WalletAccountSolanaGasless', () => {
         ).rejects.toThrow(
           'The wallet must be connected to a paymaster to send transactions.'
         )
-      })
+    })
 
-      it('should throw if account is disposed', async () => {
+    test('should throw if account is disposed', async () => {
         const tempAccount = new WalletAccountSolanaGasless(
           TEST_SEED_PHRASE,
           "0'/0'",
@@ -335,11 +330,9 @@ describe('WalletAccountSolanaGasless', () => {
             value: 1000n
           })
         ).rejects.toThrow('The wallet account has been disposed.')
-      })
     })
 
-    describe('Native Transfer Transaction', () => {
-      it('should accept simple {to, value} transaction format', async () => {
+    test('should successfully send a transaction', async () => {
         const result = await account.sendTransaction({
           to: '4r33xEKAD2cNMrC9NyJy8nb4XmruUKebZ6LZZm65PVUZ',
           value: 1000000n
@@ -349,9 +342,9 @@ describe('WalletAccountSolanaGasless', () => {
         expect(result.hash).toBe('mock-signature-123')
         expect(result.fee).toBe(5000n)
         expect(mockPaymaster.signAndSendTransaction).toHaveBeenCalled()
-      })
+    })
 
-      it('should handle bigint and number values', async () => {
+    test('should successfully send a transaction with number value', async () => {
         await account.sendTransaction({
           to: '4r33xEKAD2cNMrC9NyJy8nb4XmruUKebZ6LZZm65PVUZ',
           value: 1000000n
@@ -363,11 +356,9 @@ describe('WalletAccountSolanaGasless', () => {
         })
 
         expect(mockPaymaster.signAndSendTransaction).toHaveBeenCalledTimes(2)
-      })
     })
 
-    describe('TransactionMessage Format', () => {
-      it('should accept TransactionMessage with instructions', async () => {
+    test('should successfully send a transaction message', async () => {
         const result = await account.sendTransaction({
           version: 0,
           instructions: [],
@@ -379,9 +370,9 @@ describe('WalletAccountSolanaGasless', () => {
 
         expect(result.hash).toBe('mock-signature-123')
         expect(mockPaymaster.signAndSendTransaction).toHaveBeenCalled()
-      })
+    })
 
-      it('should verify fee payer matches paymaster address', async () => {
+    test('should successfully send a transaction message with a fee payer', async () => {
         const result = await account.sendTransaction({
           version: 0,
           instructions: [],
@@ -393,9 +384,9 @@ describe('WalletAccountSolanaGasless', () => {
         })
 
         expect(result.hash).toBe('mock-signature-123')
-      })
+    })
 
-      it('should throw if fee payer does not match paymaster', async () => {
+    test('should throw if fee payer does not match paymaster', async () => {
         await expect(
           account.sendTransaction({
             version: 0,
@@ -405,12 +396,11 @@ describe('WalletAccountSolanaGasless', () => {
             }
           })
         ).rejects.toThrow('does not match paymaster address')
-      })
     })
   })
 
   describe('signTransaction', () => {
-    it('should sign a transaction and return the signed transaction', async () => {
+    test('should sign a transaction and return the signed transaction', async () => {
       const mockRpc = createMockRpc()
       const originalRpc = account._ownerAccount._rpc
       account._ownerAccount._rpc = mockRpc
@@ -435,6 +425,19 @@ describe('WalletAccountSolanaGasless', () => {
         account._ownerAccount._rpc = originalRpc
       }
     })
+
+    test('should throw when creating a signer after disposal', async () => {
+      const account = new WalletAccountSolanaGasless(
+        TEST_SEED_PHRASE,
+        "0'/0'",
+        TEST_CONFIG
+      )
+
+      account.dispose()
+
+      await expect(account._getSigner())
+        .rejects.toThrow('The wallet account has been disposed.')
+    })
   })
 
   describe('transfer', () => {
@@ -458,8 +461,7 @@ describe('WalletAccountSolanaGasless', () => {
       account._paymaster = mockPaymaster
     })
 
-    describe('Input Validation', () => {
-      it('should throw if paymaster not configured', async () => {
+    test('should throw if paymaster not configured', async () => {
         const noPaymasterAccount = new WalletAccountSolanaGasless(
           TEST_SEED_PHRASE,
           "0'/0'",
@@ -475,9 +477,9 @@ describe('WalletAccountSolanaGasless', () => {
         ).rejects.toThrow(
           'The wallet must be connected to a paymaster to transfer tokens.'
         )
-      })
+    })
 
-      it('should throw if account is disposed', async () => {
+    test('should throw if account is disposed', async () => {
         const tempAccount = new WalletAccountSolanaGasless(
           TEST_SEED_PHRASE,
           "0'/0'",
@@ -492,9 +494,9 @@ describe('WalletAccountSolanaGasless', () => {
             amount: 1000n
           })
         ).rejects.toThrow('The wallet account has been disposed.')
-      })
+    })
 
-      it('should throw if amount exceeds u64 maximum', async () => {
+    test('should throw if amount exceeds u64 maximum', async () => {
         await expect(
           account.transfer({
             token: TEST_PAYMASTER_TOKEN,
@@ -502,9 +504,9 @@ describe('WalletAccountSolanaGasless', () => {
             amount: 0xffffffffffffffffn + 1n
           })
         ).rejects.toThrow('Amount exceeds u64 maximum value')
-      })
+    })
 
-      it('should throw if number amount exceeds safe integer', async () => {
+    test('should throw if number amount exceeds safe integer', async () => {
         await expect(
           account.transfer({
             token: TEST_PAYMASTER_TOKEN,
@@ -512,11 +514,9 @@ describe('WalletAccountSolanaGasless', () => {
             amount: Number.MAX_SAFE_INTEGER + 1
           })
         ).rejects.toThrow('Amount exceeds safe integer range')
-      })
     })
 
-    describe('Fee Limit', () => {
-      it('should respect transferMaxFee configuration', async () => {
+    test('should throw if transfer fee exceeds the transfer max fee configuration', async () => {
         const limitedAccount = new WalletAccountSolanaGasless(
           TEST_SEED_PHRASE,
           "0'/0'",
@@ -535,11 +535,9 @@ describe('WalletAccountSolanaGasless', () => {
             amount: 1000n
           })
         ).rejects.toThrow('Exceeded maximum fee cost')
-      })
     })
 
-    describe('SPL Token Transfer', () => {
-      it('should build and send SPL token transfer', async () => {
+    test('should successfully transfer tokens', async () => {
         const result = await account.transfer({
           token: TEST_PAYMASTER_TOKEN,
           recipient: TEST_PAYMASTER_ADDRESS,
@@ -549,12 +547,11 @@ describe('WalletAccountSolanaGasless', () => {
         expect(result.hash).toBe('mock-signature-123')
         expect(result.fee).toBe(5000n)
         expect(mockPaymaster.signAndSendTransaction).toHaveBeenCalled()
-      })
     })
   })
 
   describe('toReadOnlyAccount', () => {
-    it('should create a read-only account from full account', async () => {
+    test('should create a read-only account from full account', async () => {
       const readOnlyAccount = await account.toReadOnlyAccount()
 
       expect(readOnlyAccount).toBeInstanceOf(WalletAccountReadOnlySolanaGasless)

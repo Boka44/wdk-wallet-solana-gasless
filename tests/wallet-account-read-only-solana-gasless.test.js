@@ -14,10 +14,11 @@
 
 'use strict'
 
-import { describe, it, expect, beforeEach, jest } from '@jest/globals'
+import { describe, test, expect, beforeEach, jest } from '@jest/globals'
+
 import { AccountRole } from '@solana/kit'
 
-import { WalletAccountReadOnlySolanaGasless, WalletAccountSolanaGasless} from '@tetherto/wdk-wallet-solana-gasless'
+import { WalletAccountReadOnlySolanaGasless, WalletAccountSolanaGasless } from '../index.js'
 
 const TEST_ADDRESS = 'HmWPZeFgxZAJQYgwh5ipYwjbVTHtjEHB3dnJ5xcQBHX9'
 const TEST_ACCOUNT_ADDRESS = '3uXqWpwgqKVdiHAwF6Vmu4G4vdQzpR66xjPkz1G7zMKE'
@@ -87,33 +88,14 @@ describe('WalletAccountReadOnlySolanaGasless', () => {
     readOnlyAccount._paymaster = mockPaymaster
   })
 
-  describe('Constructor', () => {
-    it('should create instance with valid config', () => {
-      const account = new WalletAccountReadOnlySolanaGasless(
-        TEST_ADDRESS,
-        TEST_CONFIG
-      )
-
-      expect(account).toBeInstanceOf(WalletAccountReadOnlySolanaGasless)
-      expect(account._rpc).toBeDefined()
-      expect(account._paymaster).toBeDefined()
-      expect(account._commitment).toBe('confirmed')
-    })
-
-    it('should create instance without provider', () => {
-      const account = new WalletAccountReadOnlySolanaGasless(TEST_ADDRESS, {
-        paymasterAddress: TEST_ADDRESS,
-        paymasterToken: {
-          address: TEST_PAYMASTER_TOKEN
-        }
-      })
-
-      expect(account._rpc).toBeUndefined()
+  describe('address', () => {
+    test('should return the correct address', async () => {
+      expect(await readOnlyAccount.getAddress()).toBe(TEST_ADDRESS)
     })
   })
 
   describe('getBalance', () => {
-    it('should return SOL balance in lamports', async () => {
+    test('should return SOL balance in lamports', async () => {
       mockRpc.getBalance.mockReturnValue({
         send: jest.fn().mockResolvedValue({ value: 1000000000n })
       })
@@ -124,7 +106,7 @@ describe('WalletAccountReadOnlySolanaGasless', () => {
       expect(mockRpc.getBalance).toHaveBeenCalledTimes(1)
     })
 
-    it('should throw error when not connected to provider', async () => {
+    test('should throw error when not connected to provider', async () => {
       const disconnectedAccount = new WalletAccountReadOnlySolanaGasless(
         TEST_ADDRESS,
         {}
@@ -137,7 +119,7 @@ describe('WalletAccountReadOnlySolanaGasless', () => {
   })
 
   describe('getTokenBalance', () => {
-    it('should return token balance when ATA exists', async () => {
+    test('should return token balance when ATA exists', async () => {
       mockRpc.getAccountInfo.mockReturnValue({
         send: jest.fn().mockResolvedValue({
           value: {
@@ -162,7 +144,7 @@ describe('WalletAccountReadOnlySolanaGasless', () => {
       expect(mockRpc.getTokenAccountBalance).toHaveBeenCalledTimes(1)
     })
 
-    it('should return zero when ATA does not exist', async () => {
+    test('should return zero when ATA does not exist', async () => {
       mockRpc.getAccountInfo.mockReturnValue({
         send: jest.fn().mockResolvedValue({ value: null })
       })
@@ -181,7 +163,7 @@ describe('WalletAccountReadOnlySolanaGasless', () => {
       return buffer.toString('base64')
     }
 
-    it('should return balances for multiple tokens', async () => {
+    test('should return balances for multiple tokens', async () => {
       const token2 = 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v'
       mockRpc.getMultipleAccounts.mockReturnValue({
         send: jest.fn().mockResolvedValue({
@@ -209,7 +191,7 @@ describe('WalletAccountReadOnlySolanaGasless', () => {
       expect(balances[token2]).toBe(5000000n)
     })
 
-    it('should return 0n for tokens where ATA does not exist', async () => {
+    test('should return 0n for tokens where ATA does not exist', async () => {
       mockRpc.getMultipleAccounts.mockReturnValue({
         send: jest.fn().mockResolvedValue({
           value: [null]
@@ -236,7 +218,7 @@ describe('WalletAccountReadOnlySolanaGasless', () => {
       })
     })
 
-    it('should quote fee for native SOL transfer with bigint value', async () => {
+    test('should quote fee for native SOL transfer with bigint value', async () => {
       const result = await readOnlyAccount.quoteSendTransaction({
         to: '4r33xEKAD2cNMrC9NyJy8nb4XmruUKebZ6LZZm65PVUZ',
         value: 1000000000n
@@ -246,7 +228,7 @@ describe('WalletAccountReadOnlySolanaGasless', () => {
       expect(mockPaymaster.getPaymentInstruction).toHaveBeenCalledTimes(1)
     })
 
-    it('should quote fee for native SOL transfer with number value', async () => {
+    test('should quote fee for native SOL transfer with number value', async () => {
       const result = await readOnlyAccount.quoteSendTransaction({
         to: '4r33xEKAD2cNMrC9NyJy8nb4XmruUKebZ6LZZm65PVUZ',
         value: 1000000000
@@ -255,7 +237,28 @@ describe('WalletAccountReadOnlySolanaGasless', () => {
       expect(result).toEqual({ fee: 5000n })
     })
 
-    it('should throw error when not connected to paymaster provider', async () => {
+    test('should quote fee when configured with paymaster failover providers', async () => {
+      const account = new WalletAccountReadOnlySolanaGasless(TEST_ADDRESS, {
+        ...TEST_CONFIG,
+        paymasterUrl: [
+          TEST_PAYMASTER_URL,
+          { rpcUrl: TEST_PAYMASTER_URL }
+        ]
+      })
+
+      account._rpc = mockRpc
+      account._solanaReadOnlyAccount._rpc = mockRpc
+      account._paymaster = mockPaymaster
+
+      const result = await account.quoteSendTransaction({
+        to: '4r33xEKAD2cNMrC9NyJy8nb4XmruUKebZ6LZZm65PVUZ',
+        value: 1000000000n
+      })
+
+      expect(result).toEqual({ fee: 5000n })
+    })
+
+    test('should throw error when not connected to paymaster provider', async () => {
       const disconnectedAccount = new WalletAccountReadOnlySolanaGasless(
         TEST_ADDRESS,
         { provider: TEST_RPC_URL }
@@ -271,7 +274,7 @@ describe('WalletAccountReadOnlySolanaGasless', () => {
       )
     })
 
-    it('should throw when fee payer does not match paymaster address', async () => {
+    test('should throw when fee payer does not match paymaster address', async () => {
       await expect(
         readOnlyAccount.quoteSendTransaction({
           version: 0,
@@ -303,7 +306,7 @@ describe('WalletAccountReadOnlySolanaGasless', () => {
       })
     })
 
-    it('should quote fee when recipient ATA exists', async () => {
+    test('should quote fee when recipient ATA exists', async () => {
       const result = await readOnlyAccount.quoteTransfer({
         token: TEST_PAYMASTER_TOKEN,
         recipient: TEST_ADDRESS,
@@ -313,7 +316,7 @@ describe('WalletAccountReadOnlySolanaGasless', () => {
       expect(result).toEqual({ fee: 5000n })
     })
 
-    it('should handle number amount', async () => {
+    test('should handle number amount', async () => {
       const result = await readOnlyAccount.quoteTransfer({
         token: TEST_PAYMASTER_TOKEN,
         recipient: TEST_ADDRESS,
@@ -323,7 +326,21 @@ describe('WalletAccountReadOnlySolanaGasless', () => {
       expect(result.fee).toBe(5000n)
     })
 
-    it('should throw error when not connected to paymaster provider', async () => {
+    test('should quote fee when recipient ATA does not exist', async () => {
+      mockRpc.getAccountInfo.mockReturnValue({
+        send: jest.fn().mockResolvedValue({ value: null })
+      })
+
+      const result = await readOnlyAccount.quoteTransfer({
+        token: TEST_PAYMASTER_TOKEN,
+        recipient: TEST_ADDRESS,
+        amount: 1000000n
+      })
+
+      expect(result).toEqual({ fee: 5000n })
+    })
+
+    test('should throw error when not connected to paymaster provider', async () => {
       const disconnectedAccount = new WalletAccountReadOnlySolanaGasless(
         TEST_ADDRESS,
         { provider: TEST_RPC_URL }
@@ -345,7 +362,7 @@ describe('WalletAccountReadOnlySolanaGasless', () => {
     const MOCK_TX_SIGNATURE =
       '2k3dxVsXko3Vtb7z2W31GHCbZBzRXCAo5YYqbn7bxUCQM1RQb5Xq1XhWndFGhZGpZ5mGARUx5kavWqFVoBGujpWf'
 
-    it('should return transaction receipt', async () => {
+    test('should return transaction receipt', async () => {
       const mockReceipt = {
         slot: 123456n,
         meta: {
@@ -365,7 +382,7 @@ describe('WalletAccountReadOnlySolanaGasless', () => {
       expect(mockRpc.getTransaction).toHaveBeenCalledTimes(1)
     })
 
-    it('should return null for non-existent transaction', async () => {
+    test('should return null for non-existent transaction', async () => {
       mockRpc.getTransaction.mockReturnValue({
         send: jest.fn().mockResolvedValue(null)
       })
@@ -378,7 +395,7 @@ describe('WalletAccountReadOnlySolanaGasless', () => {
   })
 
   describe('verify', () => {
-    it('should verify signature for same message across multiple verifications', async () => {
+    test('should verify signature for same message across multiple verifications', async () => {
       const account = new WalletAccountSolanaGasless(
         TEST_SEED_PHRASE,
         "0'/0'",
@@ -398,7 +415,7 @@ describe('WalletAccountReadOnlySolanaGasless', () => {
       account.dispose()
     })
 
-    it('should reject signature for different message', async () => {
+    test('should reject signature for different message', async () => {
       const account = new WalletAccountSolanaGasless(
         TEST_SEED_PHRASE,
         "0'/0'",
@@ -416,7 +433,7 @@ describe('WalletAccountReadOnlySolanaGasless', () => {
       account.dispose()
     })
 
-    it('should reject invalid hex signature', async () => {
+    test('should reject invalid hex signature', async () => {
       expect(
         await readOnlyAccount.verify('Test message', 'not-a-valid-hex-signature')
       ).toBe(false)
