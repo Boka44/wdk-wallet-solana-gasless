@@ -69,17 +69,19 @@ export default class WalletAccountSolanaGasless extends WalletAccountReadOnlySol
      * Sends a transaction.
      *
      * @param {SolanaTransaction} tx - The transaction.
+     * @param {SolanaGaslessWalletPaymasterConfigOverrides} [config] - If set, overrides the given configuration options.
      * @returns {Promise<TransactionResult>} The transaction's result.
      */
-    sendTransaction(tx: SolanaTransaction): Promise<TransactionResult>;
+    sendTransaction(tx: SolanaTransaction, config?: SolanaGaslessWalletPaymasterConfigOverrides): Promise<TransactionResult>;
     /**
      * Transfers a token to another address.
      *
      * @param {TransferOptions} options - The transfer's options.
+     * @param {SolanaGaslessWalletPaymasterConfigOverrides} [config] - If set, overrides the given configuration options.
      * @returns {Promise<TransferResult>} The transfer's result.
      * @note only SPL tokens - won't work for native SOL
      */
-    transfer({ token, recipient, amount }: TransferOptions): Promise<TransferResult>;
+    transfer({ token, recipient, amount }: TransferOptions, config?: SolanaGaslessWalletPaymasterConfigOverrides): Promise<TransferResult>;
     /**
      * Returns a read-only copy of the account.
      *
@@ -99,6 +101,7 @@ export default class WalletAccountSolanaGasless extends WalletAccountReadOnlySol
      *
      * @private
      * @param {SolanaTransaction} tx - The transaction.
+     * @param {SolanaGaslessWalletPaymasterConfigOverrides} [config] - If set, overrides the given configuration options.
      * @returns {Promise<{ fee: bigint, transactionMessage: TransactionMessage }>} The fee and populated transaction message.
      */
     private _populateTransactionMessage;
@@ -120,4 +123,5 @@ export type FullySignedTransaction = import("@solana/transactions").FullySignedT
 export type KeyPairSigner = import("@solana/signers").KeyPairSigner;
 export type SolanaTransaction = import("./wallet-account-read-only-solana-gasless.js").SolanaTransaction;
 export type SolanaGaslessWalletConfig = import("./wallet-account-read-only-solana-gasless.js").SolanaGaslessWalletConfig;
+export type SolanaGaslessWalletPaymasterConfigOverrides = import("./wallet-account-read-only-solana-gasless.js").SolanaGaslessWalletPaymasterConfigOverrides;
 import WalletAccountReadOnlySolanaGasless from './wallet-account-read-only-solana-gasless.js';

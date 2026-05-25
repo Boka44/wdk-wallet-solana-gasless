@@ -34,8 +34,10 @@ import WalletAccountReadOnlySolanaGasless from './wallet-account-read-only-solan
 /** @typedef {import('@solana/transactions').FullySignedTransaction} FullySignedTransaction */
 /** @typedef {import('@solana/signers').KeyPairSigner} KeyPairSigner */
 
-/** @typedef {import('./wallet-account-read-only-solana-gasless.js').SolanaTransaction} SolanaTransaction */
+/** @typedef {import('@tetherto/wdk-wallet-solana').SolanaWalletConfig} SolanaWalletConfig */
+
 /** @typedef {import('./wallet-account-read-only-solana-gasless.js').SolanaGaslessWalletConfig} SolanaGaslessWalletConfig */
+/** @typedef {import('./wallet-account-read-only-solana-gasless.js').SolanaGaslessWalletPaymasterConfigOverrides} SolanaGaslessWalletPaymasterConfigOverrides */
 
 /** @implements {IWalletAccount} */
 export default class WalletAccountSolanaGasless extends WalletAccountReadOnlySolanaGasless {
@@ -127,9 +129,10 @@ export default class WalletAccountSolanaGasless extends WalletAccountReadOnlySol
    * Sends a transaction.
    *
    * @param {SolanaTransaction} tx - The transaction.
+   * @param {SolanaGaslessWalletPaymasterConfigOverrides} [config] - If set, overrides the given configuration options.
    * @returns {Promise<TransactionResult>} The transaction's result.
    */
-  async sendTransaction (tx) {
+  async sendTransaction (tx, config = {}) {
     if (!this.keyPair.privateKey) {
       throw new Error('The wallet account has been disposed.')
     }
@@ -138,7 +141,7 @@ export default class WalletAccountSolanaGasless extends WalletAccountReadOnlySol
       throw new Error('The wallet must be connected to a paymaster to send transactions.')
     }
 
-    const { fee, transactionMessage } = await this._populateTransactionMessage(tx)
+    const { fee, transactionMessage } = await this._populateTransactionMessage(tx, config)
 
     const partiallySignedTransactionMessage = await partiallySignTransactionMessageWithSigners(transactionMessage)
 
@@ -153,10 +156,11 @@ export default class WalletAccountSolanaGasless extends WalletAccountReadOnlySol
    * Transfers a token to another address.
    *
    * @param {TransferOptions} options - The transfer's options.
+   * @param {SolanaGaslessWalletPaymasterConfigOverrides} [config] - If set, overrides the given configuration options.
    * @returns {Promise<TransferResult>} The transfer's result.
    * @note only SPL tokens - won't work for native SOL
    */
-  async transfer ({ token, recipient, amount }) {
+  async transfer ({ token, recipient, amount }, config = {}) {
     if (!this.keyPair.privateKey) {
       throw new Error('The wallet account has been disposed.')
     }
@@ -165,14 +169,16 @@ export default class WalletAccountSolanaGasless extends WalletAccountReadOnlySol
       throw new Error('The wallet must be connected to a paymaster to transfer tokens.')
     }
 
+    const mergedConfig = { ...this._config, ...config }
+
     const transactionMessage = await this._buildSPLTransferTransactionMessage(token, recipient, amount)
 
-    const fee = await this._getTransactionFee(transactionMessage)
-    if (this._config.transferMaxFee !== undefined && fee >= this._config.transferMaxFee) {
+    const fee = await this._getTransactionFee(transactionMessage, mergedConfig)
+    if (mergedConfig.transferMaxFee !== undefined && fee >= mergedConfig.transferMaxFee) {
       throw new Error('Exceeded maximum fee cost for transfer operation.')
     }
 
-    const { hash } = await this.sendTransaction(transactionMessage)
+    const { hash } = await this.sendTransaction(transactionMessage, mergedConfig)
 
     return { hash, fee }
   }
@@ -183,9 +189,9 @@ export default class WalletAccountSolanaGasless extends WalletAccountReadOnlySol
    * @returns {Promise<WalletAccountReadOnlySolanaGasless>} The read-only account.
    */
   async toReadOnlyAccount () {
-    const address = await this._ownerAccount.getAddress()
+    const addr = await this._ownerAccount.getAddress()
 
-    const readOnlyAccount = new WalletAccountReadOnlySolanaGasless(address, this._config)
+    const readOnlyAccount = new WalletAccountReadOnlySolanaGasless(addr, this._config)
 
     return readOnlyAccount
   }
@@ -207,9 +213,10 @@ export default class WalletAccountSolanaGasless extends WalletAccountReadOnlySol
    *
    * @private
    * @param {SolanaTransaction} tx - The transaction.
+   * @param {SolanaGaslessWalletPaymasterConfigOverrides} [config] - If set, overrides the given configuration options.
    * @returns {Promise<{ fee: bigint, transactionMessage: TransactionMessage }>} The fee and populated transaction message.
    */
-  async _populateTransactionMessage (tx) {
+  async _populateTransactionMessage (tx, config = {}) {
     let draft = tx.to !== undefined && tx.value !== undefined
       ? await this._buildNativeTransferTransactionMessage(tx.to, tx.value)
       : tx
@@ -224,7 +231,7 @@ export default class WalletAccountSolanaGasless extends WalletAccountReadOnlySol
     const paymasterPublicKey = address(this._config.paymasterAddress)
     draft = setTransactionMessageFeePayer(paymasterPublicKey, draft)
 
-    const { payment_amount: fee, payment_instruction: paymentInstruction } = await this._getTransactionPaymentInfo(draft)
+    const { payment_amount: fee, payment_instruction: paymentInstruction } = await this._getTransactionPaymentInfo(draft, config)
 
     const transactionMessage = pipe(
       draft,

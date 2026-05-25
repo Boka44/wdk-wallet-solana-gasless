@@ -27,6 +27,7 @@ const TEST_SEED_PHRASE =
 const TEST_RPC_URL = 'https://mockurl.com'
 const TEST_PAYMASTER_URL = 'https://mockpaymaster.com'
 const TEST_PAYMASTER_TOKEN = 'Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB'
+const TEST_PAYMASTER_TOKEN_OVERRIDE = 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v'
 
 const TEST_CONFIG = {
   provider: TEST_RPC_URL,
@@ -206,6 +207,31 @@ describe('WalletAccountReadOnlySolanaGasless', () => {
     })
   })
 
+  describe('getPaymasterTokenBalance', () => {
+    test('should return the configured paymaster token balance', async () => {
+      const getTokenBalance = jest
+        .spyOn(readOnlyAccount, 'getTokenBalance')
+        .mockResolvedValue(123456n)
+
+      const balance = await readOnlyAccount.getPaymasterTokenBalance()
+
+      expect(balance).toBe(123456n)
+      expect(getTokenBalance).toHaveBeenCalledWith(TEST_PAYMASTER_TOKEN)
+    })
+
+    test('should throw when paymaster token is not configured', async () => {
+      const account = new WalletAccountReadOnlySolanaGasless(TEST_ADDRESS, {
+        provider: TEST_RPC_URL,
+        paymasterUrl: TEST_PAYMASTER_URL,
+        paymasterAddress: TEST_ADDRESS
+      })
+
+      await expect(account.getPaymasterTokenBalance()).rejects.toThrow(
+        'Paymaster token is not configured.'
+      )
+    })
+  })
+
   describe('quoteSendTransaction', () => {
     beforeEach(() => {
       mockRpc.getLatestBlockhash.mockReturnValue({
@@ -235,6 +261,23 @@ describe('WalletAccountReadOnlySolanaGasless', () => {
       })
 
       expect(result).toEqual({ fee: 5000n })
+    })
+
+    test('should use paymaster token override when quoting fee', async () => {
+      await readOnlyAccount.quoteSendTransaction({
+        to: '4r33xEKAD2cNMrC9NyJy8nb4XmruUKebZ6LZZm65PVUZ',
+        value: 1000000000n
+      }, {
+        paymasterToken: {
+          address: TEST_PAYMASTER_TOKEN_OVERRIDE
+        }
+      })
+
+      expect(mockPaymaster.getPaymentInstruction).toHaveBeenCalledWith(
+        expect.objectContaining({
+          fee_token: TEST_PAYMASTER_TOKEN_OVERRIDE
+        })
+      )
     })
 
     test('should quote fee when configured with paymaster failover providers', async () => {

@@ -27,6 +27,7 @@ const TEST_RPC_URL = 'https://mockurl.com'
 const TEST_PAYMASTER_URL = 'https://mockpaymaster.com'
 const TEST_PAYMASTER_ADDRESS = 'HmWPZeFgxZAJQYgwh5ipYwjbVTHtjEHB3dnJ5xcQBHX9'
 const TEST_PAYMASTER_TOKEN = 'Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB'
+const TEST_PAYMASTER_TOKEN_OVERRIDE = 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v'
 const TEST_ACCOUNT_ADDRESS = '3uXqWpwgqKVdiHAwF6Vmu4G4vdQzpR66xjPkz1G7zMKE'
 
 const TEST_CONFIG = {
@@ -386,6 +387,23 @@ describe('WalletAccountSolanaGasless', () => {
         expect(result.hash).toBe('mock-signature-123')
     })
 
+    test('should use paymaster token override when sending a transaction', async () => {
+        await account.sendTransaction({
+          to: '4r33xEKAD2cNMrC9NyJy8nb4XmruUKebZ6LZZm65PVUZ',
+          value: 1000000n
+        }, {
+          paymasterToken: {
+            address: TEST_PAYMASTER_TOKEN_OVERRIDE
+          }
+        })
+
+        expect(mockPaymaster.getPaymentInstruction).toHaveBeenCalledWith(
+          expect.objectContaining({
+            fee_token: TEST_PAYMASTER_TOKEN_OVERRIDE
+          })
+        )
+    })
+
     test('should throw if fee payer does not match paymaster', async () => {
         await expect(
           account.sendTransaction({
@@ -533,6 +551,18 @@ describe('WalletAccountSolanaGasless', () => {
             token: TEST_PAYMASTER_TOKEN,
             recipient: TEST_PAYMASTER_ADDRESS,
             amount: 1000n
+          })
+        ).rejects.toThrow('Exceeded maximum fee cost')
+    })
+
+    test('should throw if transfer fee exceeds the transfer max fee override', async () => {
+        await expect(
+          account.transfer({
+            token: TEST_PAYMASTER_TOKEN,
+            recipient: TEST_PAYMASTER_ADDRESS,
+            amount: 1000n
+          }, {
+            transferMaxFee: 1000n
           })
         ).rejects.toThrow('Exceeded maximum fee cost')
     })

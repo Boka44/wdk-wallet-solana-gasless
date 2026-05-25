@@ -44,11 +44,13 @@ import { getTransferSolInstruction } from '@solana-program/system'
 
 /**
  * @typedef {Object} SolanaGaslessWalletPaymasterConfig
- * @property {string | KoraClientOptions | Array<string | KoraClientOptions>} paymasterUrl - todo
- * @property {string} paymasterAddress - The address of the paymaster smart contract.
+ * @property {string | KoraClientOptions | Array<string | KoraClientOptions>} paymasterUrl - The paymaster RPC url, client options, or failover list.
+ * @property {string} paymasterAddress - The address of the paymaster program.
  * @property {Object} paymasterToken - The paymaster token configuration.
  * @property {string} paymasterToken.address - The address of the paymaster token.
  */
+
+/** @typedef {Partial<Pick<SolanaGaslessWalletPaymasterConfig, "paymasterToken"> & Pick<SolanaWalletConfig, "transferMaxFee">>} SolanaGaslessWalletPaymasterConfigOverrides */
 
 /** @typedef {SolanaWalletConfig & SolanaGaslessWalletPaymasterConfig} SolanaGaslessWalletConfig */
 
@@ -136,7 +138,7 @@ export default class WalletAccountReadOnlySolanaGasless extends WalletAccountRea
   /**
    * Returns the account balance for a specific SPL token.
    *
-   * @param {string} tokenAddress - The smart contract address of the token.
+   * @param {string} tokenAddress - The mint address of the token.
    * @returns {Promise<bigint>} The token balance (in base unit).
    */
   async getTokenBalance (tokenAddress) {
@@ -146,7 +148,7 @@ export default class WalletAccountReadOnlySolanaGasless extends WalletAccountRea
   /**
    * Returns the account balances for a list of SPL tokens.
    *
-   * @param {string[]} tokenAddresses - The smart contract addresses of the tokens.
+   * @param {string[]} tokenAddresses - The mint addresses of the tokens.
    * @returns {Promise<Record<string, bigint>>} A mapping of token addresses to their balances (in base units).
    */
   async getTokenBalances (tokenAddresses) {
@@ -154,12 +156,29 @@ export default class WalletAccountReadOnlySolanaGasless extends WalletAccountRea
   }
 
   /**
+   * Returns the account's balance for the paymaster token provided in the wallet account configuration.
+   *
+   * @returns {Promise<bigint>} The paymaster token balance (in base unit).
+   * @throws {Error} If no paymaster token is configured (sponsored or native-coins mode).
+   */
+  async getPaymasterTokenBalance () {
+    const { paymasterToken } = this._config
+
+    if (!paymasterToken) {
+      throw new Error('Paymaster token is not configured.')
+    }
+
+    return await this.getTokenBalance(paymasterToken.address)
+  }
+
+  /**
    * Quotes the costs of a send transaction operation.
    *
    * @param {SolanaTransaction} tx - The transaction.
+   * @param {SolanaGaslessWalletPaymasterConfigOverrides} [config] - If set, overrides the given configuration options.
    * @returns {Promise<Omit<TransactionResult, 'hash'>>} The transaction's quotes.
    */
-  async quoteSendTransaction (tx) {
+  async quoteSendTransaction (tx, config = {}) {
     if (!this._paymaster) {
       throw new Error('The wallet must be connected to a paymaster provider to quote transactions.')
     }
@@ -177,7 +196,7 @@ export default class WalletAccountReadOnlySolanaGasless extends WalletAccountRea
       transactionMessage = setTransactionMessageFeePayer(address(this._config.paymasterAddress), transactionMessage)
     }
 
-    const { payment_amount: fee } = await this._getTransactionPaymentInfo(transactionMessage)
+    const { payment_amount: fee } = await this._getTransactionPaymentInfo(transactionMessage, config)
 
     return { fee: BigInt(fee) }
   }
@@ -186,16 +205,17 @@ export default class WalletAccountReadOnlySolanaGasless extends WalletAccountRea
    * Quotes the costs of a transfer operation.
    *
    * @param {TransferOptions} options - The transfer's options.
+   * @param {SolanaGaslessWalletPaymasterConfigOverrides} [config] - If set, overrides the given configuration options.
    * @returns {Promise<Omit<TransferResult, 'hash'>>} The transfer's quotes.
    */
-  async quoteTransfer ({ token, recipient, amount }) {
+  async quoteTransfer ({ token, recipient, amount }, config = {}) {
     if (!this._paymaster) {
       throw new Error('The wallet must be connected to a paymaster provider to quote transfer operations.')
     }
 
     const transactionMessage = await this._buildSPLTransferTransactionMessage(token, recipient, amount)
 
-    const { payment_amount: fee } = await this._getTransactionPaymentInfo(transactionMessage)
+    const { payment_amount: fee } = await this._getTransactionPaymentInfo(transactionMessage, config)
 
     return { fee: BigInt(fee) }
   }
@@ -374,24 +394,27 @@ export default class WalletAccountReadOnlySolanaGasless extends WalletAccountRea
    *
    * @protected
    * @param {TransactionMessage} transactionMessage - The transaction message to fetch the payment info.
+   * @param {SolanaGaslessWalletPaymasterConfigOverrides} [config] - If set, overrides the given configuration options.
    * @returns {Promise<GetPaymentInstructionResponse>} The payment info.
    */
-  async _getTransactionPaymentInfo (transactionMessage) {
-    const address = await this.getAddress()
+  async _getTransactionPaymentInfo (transactionMessage, config = {}) {
+    const mergedConfig = { ...this._config, ...config }
+
+    const addr = await this.getAddress()
 
     const draft = getBase64EncodedWireTransaction(compileTransaction(transactionMessage))
 
     const { payment_instruction: paymentInstruction, ...payment } = await this._paymaster.getPaymentInstruction({
       transaction: draft,
-      fee_token: this._config.paymasterToken.address,
-      source_wallet: address,
+      fee_token: mergedConfig.paymasterToken.address,
+      source_wallet: addr,
       token_program_id: TOKEN_PROGRAM_ADDRESS
     })
 
     const upgradedPaymentInstruction = {
       ...paymentInstruction,
       accounts: (paymentInstruction.accounts || []).map((account) => {
-        if (account.address !== address) return account
+        if (account.address !== addr) return account
         return { ...account, role: AccountRole.READONLY_SIGNER }
       })
     }
@@ -403,10 +426,11 @@ export default class WalletAccountReadOnlySolanaGasless extends WalletAccountRea
    * Calculates the fee for a given transaction message.
    *
    * @param {TransactionMessage} transactionMessage - The transaction message to calculate fee for.
-   * @returns {Promise<BigInt>} The calculated transaction fee in tokens.
+   * @param {SolanaGaslessWalletPaymasterConfigOverrides} [config] - If set, overrides the given configuration options.
+   * @returns {Promise<bigint>} The calculated transaction fee in tokens.
    */
-  async _getTransactionFee (transactionMessage) {
-    const { payment_amount: fee } = await this._getTransactionPaymentInfo(transactionMessage)
+  async _getTransactionFee (transactionMessage, config = {}) {
+    const { payment_amount: fee } = await this._getTransactionPaymentInfo(transactionMessage, config)
 
     return BigInt(fee)
   }

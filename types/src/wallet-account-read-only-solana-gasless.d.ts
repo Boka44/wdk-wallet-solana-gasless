@@ -46,31 +46,40 @@ export default class WalletAccountReadOnlySolanaGasless extends WalletAccountRea
     /**
      * Returns the account balance for a specific SPL token.
      *
-     * @param {string} tokenAddress - The smart contract address of the token.
+     * @param {string} tokenAddress - The mint address of the token.
      * @returns {Promise<bigint>} The token balance (in base unit).
      */
     getTokenBalance(tokenAddress: string): Promise<bigint>;
     /**
      * Returns the account balances for a list of SPL tokens.
      *
-     * @param {string[]} tokenAddresses - The smart contract addresses of the tokens.
+     * @param {string[]} tokenAddresses - The mint addresses of the tokens.
      * @returns {Promise<Record<string, bigint>>} A mapping of token addresses to their balances (in base units).
      */
     getTokenBalances(tokenAddresses: string[]): Promise<Record<string, bigint>>;
     /**
+     * Returns the account's balance for the paymaster token provided in the wallet account configuration.
+     *
+     * @returns {Promise<bigint>} The paymaster token balance (in base unit).
+     * @throws {Error} If no paymaster token is configured (sponsored or native-coins mode).
+     */
+    getPaymasterTokenBalance(): Promise<bigint>;
+    /**
      * Quotes the costs of a send transaction operation.
      *
      * @param {SolanaTransaction} tx - The transaction.
+     * @param {SolanaGaslessWalletPaymasterConfigOverrides} [config] - If set, overrides the given configuration options.
      * @returns {Promise<Omit<TransactionResult, 'hash'>>} The transaction's quotes.
      */
-    quoteSendTransaction(tx: SolanaTransaction): Promise<Omit<TransactionResult, "hash">>;
+    quoteSendTransaction(tx: SolanaTransaction, config?: SolanaGaslessWalletPaymasterConfigOverrides): Promise<Omit<TransactionResult, "hash">>;
     /**
      * Quotes the costs of a transfer operation.
      *
      * @param {TransferOptions} options - The transfer's options.
+     * @param {SolanaGaslessWalletPaymasterConfigOverrides} [config] - If set, overrides the given configuration options.
      * @returns {Promise<Omit<TransferResult, 'hash'>>} The transfer's quotes.
      */
-    quoteTransfer(options: TransferOptions): Promise<Omit<TransferResult, "hash">>;
+    quoteTransfer(options: TransferOptions, config?: SolanaGaslessWalletPaymasterConfigOverrides): Promise<Omit<TransferResult, "hash">>;
     /**
      * Retrieves a transaction receipt by its signature
      *
@@ -131,16 +140,18 @@ export default class WalletAccountReadOnlySolanaGasless extends WalletAccountRea
      *
      * @protected
      * @param {TransactionMessage} transactionMessage - The transaction message to fetch the payment info.
+     * @param {SolanaGaslessWalletPaymasterConfigOverrides} [config] - If set, overrides the given configuration options.
      * @returns {Promise<GetPaymentInstructionResponse>} The payment info.
      */
-    protected _getTransactionPaymentInfo(transactionMessage: TransactionMessage): Promise<GetPaymentInstructionResponse>;
+    protected _getTransactionPaymentInfo(transactionMessage: TransactionMessage, config?: SolanaGaslessWalletPaymasterConfigOverrides): Promise<GetPaymentInstructionResponse>;
     /**
      * Calculates the fee for a given transaction message.
      *
      * @param {TransactionMessage} transactionMessage - The transaction message to calculate fee for.
+     * @param {SolanaGaslessWalletPaymasterConfigOverrides} [config] - If set, overrides the given configuration options.
      * @returns {Promise<bigint>} The calculated transaction fee in tokens.
      */
-    _getTransactionFee(transactionMessage: TransactionMessage): Promise<bigint>;
+    _getTransactionFee(transactionMessage: TransactionMessage, config?: SolanaGaslessWalletPaymasterConfigOverrides): Promise<bigint>;
 }
 export type TransactionResult = import("@tetherto/wdk-wallet").TransactionResult;
 export type TransactionMessage = import("@solana/transaction-messages").TransactionMessage;
@@ -159,7 +170,7 @@ export type SolanaGaslessWalletPaymasterConfig = {
      */
     paymasterUrl: string | KoraClientOptions | Array<string | KoraClientOptions>;
     /**
-     * - The address of the paymaster smart contract.
+     * - The address of the paymaster program.
      */
     paymasterAddress: string;
     /**
@@ -169,6 +180,7 @@ export type SolanaGaslessWalletPaymasterConfig = {
         address: string;
     };
 };
+export type SolanaGaslessWalletPaymasterConfigOverrides = Partial<Pick<SolanaGaslessWalletPaymasterConfig, "paymasterToken"> & Pick<SolanaWalletConfig, "transferMaxFee">>;
 export type SolanaGaslessWalletConfig = SolanaWalletConfig & SolanaGaslessWalletPaymasterConfig;
 import { WalletAccountReadOnly } from '@tetherto/wdk-wallet';
 import { KoraClient } from '@solana/kora';

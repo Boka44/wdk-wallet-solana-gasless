@@ -51,6 +51,7 @@ account.dispose()
 - **SPL Token Support**: Query balances, quote fees, and transfer SPL tokens
 - **Native SOL Messages**: Build, quote, sign, and send native SOL transfer messages
 - **Paymaster Fee Quotes**: Estimate gasless fees in the configured paymaster token
+- **Per-Operation Paymaster Overrides**: Quote, transfer, or send with an alternate paymaster token or max fee
 - **Message Signing**: Sign messages and verify signatures with Solana accounts
 - **Read-Only Accounts**: Monitor any Solana address without a private key
 - **Secure Memory Disposal**: Clear private keys from memory when done
@@ -64,6 +65,7 @@ const config = {
   commitment: 'confirmed',
   retries: 3,
   paymasterUrl: 'https://your-kora-paymaster.example',
+  // Solana program address used as the transaction fee payer.
   paymasterAddress: 'Paymaster111111111111111111111111111111111',
   paymasterToken: {
     address: 'TokenMint111111111111111111111111111111111'
@@ -115,6 +117,9 @@ const balances = await account.getTokenBalances([
   'OtherMint1111111111111111111111111111111111'
 ])
 console.log('Token balances:', balances)
+
+const paymasterTokenBalance = await account.getPaymasterTokenBalance()
+console.log('Paymaster token balance:', paymasterTokenBalance)
 ```
 
 ### Quote a Gasless Transfer
@@ -127,6 +132,32 @@ const quote = await account.quoteTransfer({
 })
 
 console.log('Paymaster fee:', quote.fee)
+```
+
+### Override Paymaster Options
+
+```javascript
+const override = {
+  paymasterToken: {
+    address: 'AlternateFeeMint11111111111111111111111111'
+  },
+  transferMaxFee: 500000n
+}
+
+const quote = await account.quoteTransfer({
+  token: 'TokenMint111111111111111111111111111111111',
+  recipient: 'Recipient1111111111111111111111111111111',
+  amount: 1000000n
+}, override)
+
+const result = await account.transfer({
+  token: 'TokenMint111111111111111111111111111111111',
+  recipient: 'Recipient1111111111111111111111111111111',
+  amount: 1000000n
+}, override)
+
+console.log('Quoted fee:', quote.fee)
+console.log('Transaction hash:', result.hash)
 ```
 
 ### Transfer SPL Tokens
@@ -148,6 +179,10 @@ console.log('Paymaster fee:', result.fee)
 const result = await account.sendTransaction({
   to: 'Recipient1111111111111111111111111111111',
   value: 10000n
+}, {
+  paymasterToken: {
+    address: 'AlternateFeeMint11111111111111111111111111'
+  }
 })
 
 console.log('Transaction hash:', result.hash)
