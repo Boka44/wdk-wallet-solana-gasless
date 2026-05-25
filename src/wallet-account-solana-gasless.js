@@ -34,6 +34,7 @@ import WalletAccountReadOnlySolanaGasless from './wallet-account-read-only-solan
 /** @typedef {import('@solana/transactions').FullySignedTransaction} FullySignedTransaction */
 /** @typedef {import('@solana/signers').KeyPairSigner} KeyPairSigner */
 
+/** @typedef {import('@tetherto/wdk-wallet-solana').SolanaTransaction} SolanaTransaction */
 /** @typedef {import('@tetherto/wdk-wallet-solana').SolanaWalletConfig} SolanaWalletConfig */
 
 /** @typedef {import('./wallet-account-read-only-solana-gasless.js').SolanaGaslessWalletConfig} SolanaGaslessWalletConfig */
