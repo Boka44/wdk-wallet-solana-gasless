@@ -16,12 +16,7 @@ export default class WalletAccountSolanaGasless extends WalletAccountReadOnlySol
     protected _config: SolanaGaslessWalletConfig;
     /** @private */
     private _ownerAccount;
-    /**
-     * The Ed25519 key pair signer for signing transactions.
-     *
-     * @private
-     * @type {KeyPairSigner | undefined}
-     */
+    /** @private */
     private _signer;
     /**
      * The derivation path's index of this account.
@@ -92,25 +87,9 @@ export default class WalletAccountSolanaGasless extends WalletAccountReadOnlySol
      * Disposes the wallet account, erasing the private key from the memory.
      */
     dispose(): void;
-    /**
-     * Prepares a transaction message for gasless payment and signing.
-     * - Ensures the transaction lifetime.
-     * - Sets the paymaster address as the fee payer.
-     * - Appends the payment instruction.
-     * - Upgrades the transaction owner to a signer based on {@link AccountRole}.
-     *
-     * @private
-     * @param {SolanaTransaction} tx - The transaction.
-     * @param {SolanaGaslessWalletPaymasterConfigOverrides} [config] - If set, overrides the given configuration options.
-     * @returns {Promise<{ fee: bigint, transactionMessage: TransactionMessage }>} The fee and populated transaction message.
-     */
+    /** @private */
     private _populateTransactionMessage;
-    /**
-     * Creates a new {@link KeyPairSigner} from a 32-bytes `Uint8Array` private key.
-     *
-     * @private
-     * @returns {Promise<KeyPairSigner>} - The keypair signer
-     */
+    /** @private */
     private _getSigner;
 }
 export type IWalletAccount = import("@tetherto/wdk-wallet").IWalletAccount;

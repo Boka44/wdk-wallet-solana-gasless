@@ -156,6 +156,12 @@ export type SolanaTransaction = import("@tetherto/wdk-wallet-solana").SolanaTran
 export type SolanaWalletConfig = import("@tetherto/wdk-wallet-solana").SolanaWalletConfig;
 export type TransferOptions = import("@tetherto/wdk-wallet-solana").TransferOptions;
 export type TransferResult = import("@tetherto/wdk-wallet-solana").TransferResult;
+export type PaymasterTokenConfig = {
+    /**
+     * - The address of the paymaster token.
+     */
+    address: string;
+};
 export type SolanaGaslessWalletPaymasterConfig = {
     /**
      * - The paymaster RPC url, client options, or failover list.
@@ -168,9 +174,7 @@ export type SolanaGaslessWalletPaymasterConfig = {
     /**
      * - The paymaster token configuration.
      */
-    paymasterToken: {
-        address: string;
-    };
+    paymasterToken: PaymasterTokenConfig;
 };
 export type SolanaGaslessWalletPaymasterConfigOverrides = Partial<Pick<SolanaGaslessWalletPaymasterConfig, "paymasterToken"> & Pick<SolanaWalletConfig, "transferMaxFee">>;
 export type SolanaGaslessWalletConfig = SolanaWalletConfig & SolanaGaslessWalletPaymasterConfig;

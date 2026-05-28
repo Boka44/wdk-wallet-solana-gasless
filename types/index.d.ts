@@ -8,6 +8,7 @@ export type TransferResult = import("@tetherto/wdk-wallet-solana").TransferResul
 export type FullySignedTransaction = import("./src/wallet-account-solana-gasless.js").FullySignedTransaction;
 export type SolanaTransactionReceipt = import("./src/wallet-account-read-only-solana-gasless.js").SolanaTransactionReceipt;
 export type SolanaTransaction = import("./src/wallet-account-read-only-solana-gasless.js").SolanaTransaction;
+export type PaymasterTokenConfig = import("./src/wallet-account-read-only-solana-gasless.js").PaymasterTokenConfig;
 export type SolanaGaslessWalletPaymasterConfig = import("./src/wallet-account-read-only-solana-gasless.js").SolanaGaslessWalletPaymasterConfig;
 export type SolanaGaslessWalletPaymasterConfigOverrides = import("./src/wallet-account-read-only-solana-gasless.js").SolanaGaslessWalletPaymasterConfigOverrides;
 export type SolanaGaslessWalletConfig = import("./src/wallet-account-read-only-solana-gasless.js").SolanaGaslessWalletConfig;

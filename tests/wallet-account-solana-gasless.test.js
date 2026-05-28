@@ -14,7 +14,7 @@
 
 'use strict'
 
-import { describe, test, expect, beforeAll, beforeEach, afterEach, jest } from '@jest/globals'
+import { describe, test, expect, beforeEach, afterEach, jest } from '@jest/globals'
 
 import { getBase64EncodedWireTransaction, getTransactionDecoder, isFullySignedTransaction } from '@solana/transactions'
 import { AccountRole, getBase64Encoder } from '@solana/kit'
@@ -23,12 +23,13 @@ import WalletManagerSolanaGasless, { WalletAccountReadOnlySolanaGasless, WalletA
 
 const TEST_SEED_PHRASE =
   'test walk nut penalty hip pave soap entry language right filter choice'
-const TEST_RPC_URL = 'https://mockurl.com'
-const TEST_PAYMASTER_URL = 'https://mockpaymaster.com'
+const TEST_RPC_URL = 'https://dummyurl.com'
+const TEST_PAYMASTER_URL = 'https://dummypaymaster.com'
 const TEST_PAYMASTER_ADDRESS = 'HmWPZeFgxZAJQYgwh5ipYwjbVTHtjEHB3dnJ5xcQBHX9'
 const TEST_PAYMASTER_TOKEN = 'Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB'
 const TEST_PAYMASTER_TOKEN_OVERRIDE = 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v'
 const TEST_ACCOUNT_ADDRESS = '3uXqWpwgqKVdiHAwF6Vmu4G4vdQzpR66xjPkz1G7zMKE'
+const DUMMY_SIGNATURE = 'dummy-signature-123'
 
 const TEST_CONFIG = {
   provider: TEST_RPC_URL,
@@ -82,7 +83,7 @@ function createMockPaymaster (accountAddress = TEST_ACCOUNT_ADDRESS) {
       }
     }),
     signAndSendTransaction: jest.fn().mockResolvedValue({
-      signature: 'mock-signature-123'
+      signature: DUMMY_SIGNATURE
     })
   }
 }
@@ -91,9 +92,16 @@ describe('WalletAccountSolanaGasless', () => {
   let wallet
   let account
 
-  beforeAll(async () => {
+  beforeEach(async () => {
     wallet = new WalletManagerSolanaGasless(TEST_SEED_PHRASE, TEST_CONFIG)
     account = await wallet.getAccount(0)
+  })
+
+  afterEach(() => {
+    account.dispose()
+    account = undefined
+    wallet.dispose()
+    wallet = undefined
   })
 
   describe('constructor', () => {
@@ -295,7 +303,9 @@ describe('WalletAccountSolanaGasless', () => {
 
         tempAccount.dispose()
 
-        await expect(tempAccount.sign('test message')).rejects.toThrow()
+        await expect(tempAccount.sign('test message')).rejects.toThrow(
+          'The wallet account has been disposed.'
+        )
       })
   })
 
@@ -361,7 +371,7 @@ describe('WalletAccountSolanaGasless', () => {
         })
 
         expect(result).toEqual({
-          hash: 'mock-signature-123',
+          hash: DUMMY_SIGNATURE,
           fee: 5000n
         })
         expect(mockPaymaster.signAndSendTransaction).toHaveBeenCalled()
@@ -391,7 +401,10 @@ describe('WalletAccountSolanaGasless', () => {
           }
         })
 
-        expect(result.hash).toBe('mock-signature-123')
+        expect(result).toEqual({
+          hash: DUMMY_SIGNATURE,
+          fee: 5000n
+        })
         expect(mockPaymaster.signAndSendTransaction).toHaveBeenCalled()
     })
 
@@ -406,7 +419,10 @@ describe('WalletAccountSolanaGasless', () => {
           }
         })
 
-        expect(result.hash).toBe('mock-signature-123')
+        expect(result).toEqual({
+          hash: DUMMY_SIGNATURE,
+          fee: 5000n
+        })
     })
 
     test('should use paymaster token override when sending a transaction', async () => {
@@ -610,9 +626,10 @@ describe('WalletAccountSolanaGasless', () => {
           recipient: TEST_PAYMASTER_ADDRESS,
           amount: 1000000n
         })
-
-        expect(result.hash).toBe('mock-signature-123')
-        expect(result.fee).toBe(5000n)
+        expect(result).toEqual({
+          hash: DUMMY_SIGNATURE,
+          fee: 5000n
+        })
         expect(mockPaymaster.signAndSendTransaction).toHaveBeenCalled()
     })
   })

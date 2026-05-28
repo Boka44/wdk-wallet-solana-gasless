@@ -43,11 +43,15 @@ import { getTransferSolInstruction } from '@solana-program/system'
 /** @typedef {import('@tetherto/wdk-wallet-solana').TransferResult} TransferResult */
 
 /**
+ * @typedef {Object} PaymasterTokenConfig
+ * @property {string} address - The address of the paymaster token.
+ */
+
+/**
  * @typedef {Object} SolanaGaslessWalletPaymasterConfig
  * @property {string | KoraClientOptions | Array<string | KoraClientOptions>} paymasterUrl - The paymaster RPC url, client options, or failover list.
  * @property {string} paymasterAddress - The address of the paymaster program.
- * @property {Object} paymasterToken - The paymaster token configuration.
- * @property {string} paymasterToken.address - The address of the paymaster token.
+ * @property {PaymasterTokenConfig} paymasterToken - The paymaster token configuration.
  */
 
 /** @typedef {Partial<Pick<SolanaGaslessWalletPaymasterConfig, "paymasterToken"> & Pick<SolanaWalletConfig, "transferMaxFee">>} SolanaGaslessWalletPaymasterConfigOverrides */

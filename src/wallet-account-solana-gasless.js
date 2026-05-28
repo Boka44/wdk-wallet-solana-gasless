@@ -27,8 +27,6 @@ import WalletAccountReadOnlySolanaGasless from './wallet-account-read-only-solan
 /** @typedef {import("@tetherto/wdk-wallet").IWalletAccount} IWalletAccount */
 /** @typedef {import('@tetherto/wdk-wallet').KeyPair} KeyPair */
 /** @typedef {import('@tetherto/wdk-wallet').TransactionResult} TransactionResult */
-/** @typedef {import('@tetherto/wdk-wallet').TransferOptions} TransferOptions */
-/** @typedef {import('@tetherto/wdk-wallet').TransferResult} TransferResult */
 
 /** @typedef {import('@solana/transaction-messages').TransactionMessage} TransactionMessage */
 /** @typedef {import('@solana/transactions').FullySignedTransaction} FullySignedTransaction */
@@ -36,6 +34,8 @@ import WalletAccountReadOnlySolanaGasless from './wallet-account-read-only-solan
 
 /** @typedef {import('@tetherto/wdk-wallet-solana').SolanaTransaction} SolanaTransaction */
 /** @typedef {import('@tetherto/wdk-wallet-solana').SolanaWalletConfig} SolanaWalletConfig */
+/** @typedef {import('@tetherto/wdk-wallet-solana').TransferOptions} TransferOptions */
+/** @typedef {import('@tetherto/wdk-wallet-solana').TransferResult} TransferResult */
 
 /** @typedef {import('./wallet-account-read-only-solana-gasless.js').SolanaGaslessWalletConfig} SolanaGaslessWalletConfig */
 /** @typedef {import('./wallet-account-read-only-solana-gasless.js').SolanaGaslessWalletPaymasterConfigOverrides} SolanaGaslessWalletPaymasterConfigOverrides */
@@ -57,12 +57,7 @@ export default class WalletAccountSolanaGasless extends WalletAccountReadOnlySol
     /** @private */
     this._ownerAccount = ownerAccount
 
-    /**
-     * The Ed25519 key pair signer for signing transactions.
-     *
-     * @private
-     * @type {KeyPairSigner | undefined}
-     */
+    /** @private */
     this._signer = undefined
   }
 
@@ -226,18 +221,7 @@ export default class WalletAccountSolanaGasless extends WalletAccountReadOnlySol
     this._ownerAccount.dispose()
   }
 
-  /**
-   * Prepares a transaction message for gasless payment and signing.
-   * - Ensures the transaction lifetime.
-   * - Sets the paymaster address as the fee payer.
-   * - Appends the payment instruction.
-   * - Upgrades the transaction owner to a signer based on {@link AccountRole}.
-   *
-   * @private
-   * @param {SolanaTransaction} tx - The transaction.
-   * @param {SolanaGaslessWalletPaymasterConfigOverrides} [config] - If set, overrides the given configuration options.
-   * @returns {Promise<{ fee: bigint, transactionMessage: TransactionMessage }>} The fee and populated transaction message.
-   */
+  /** @private */
   async _populateTransactionMessage (tx, config = {}) {
     let draft = tx.to !== undefined && tx.value !== undefined
       ? await this._buildNativeTransferTransactionMessage(tx.to, tx.value)
@@ -276,12 +260,7 @@ export default class WalletAccountSolanaGasless extends WalletAccountReadOnlySol
     return { fee: BigInt(fee), transactionMessage }
   }
 
-  /**
-   * Creates a new {@link KeyPairSigner} from a 32-bytes `Uint8Array` private key.
-   *
-   * @private
-   * @returns {Promise<KeyPairSigner>} - The keypair signer
-   */
+  /** @private */
   async _getSigner () {
     if (!this._ownerAccount.keyPair.privateKey) {
       throw new Error('The wallet account has been disposed.')
