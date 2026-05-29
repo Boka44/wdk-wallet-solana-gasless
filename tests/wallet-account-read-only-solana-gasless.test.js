@@ -97,6 +97,32 @@ describe('WalletAccountReadOnlySolanaGasless', () => {
     )
   })
 
+  describe('constructor', () => {
+    test('should throw if paymaster not configured', () => {
+      expect(() => {
+        new WalletAccountSolanaGasless(
+          TEST_SEED_PHRASE,
+          "0'/0'",
+          { provider: TEST_RPC_URL }
+        )
+      }).toThrow(
+        'Missing required paymaster token configuration fields: paymasterUrl, paymasterAddress, paymasterToken.'
+      )
+    })
+
+    test('should throw when paymaster token is not configured', () => {
+      expect(() => {
+        new WalletAccountReadOnlySolanaGasless(TEST_ADDRESS, {
+          provider: TEST_RPC_URL,
+          paymasterUrl: TEST_PAYMASTER_URL,
+          paymasterAddress: TEST_ADDRESS
+        })
+      }).toThrow(
+        'Missing required paymaster token configuration fields: paymasterToken.'
+      )
+    })
+  })
+
   describe('address', () => {
     test('should return the correct address', async () => {
       expect(await readOnlyAccount.getAddress()).toBe(TEST_ADDRESS)
@@ -113,17 +139,6 @@ describe('WalletAccountReadOnlySolanaGasless', () => {
 
       expect(balance).toBe(1000000000n)
       expect(mockRpc.getBalance).toHaveBeenCalledTimes(1)
-    })
-
-    test('should throw error when not connected to provider', async () => {
-      const disconnectedAccount = new WalletAccountReadOnlySolanaGasless(
-        TEST_ADDRESS,
-        {}
-      )
-
-      await expect(disconnectedAccount.getBalance()).rejects.toThrow(
-        'The wallet must be connected to a provider to retrieve balances.'
-      )
     })
   })
 
@@ -226,18 +241,6 @@ describe('WalletAccountReadOnlySolanaGasless', () => {
       expect(balance).toBe(123456n)
       expect(getTokenBalance).toHaveBeenCalledWith(TEST_PAYMASTER_TOKEN)
     })
-
-    test('should throw when paymaster token is not configured', async () => {
-      const account = new WalletAccountReadOnlySolanaGasless(TEST_ADDRESS, {
-        provider: TEST_RPC_URL,
-        paymasterUrl: TEST_PAYMASTER_URL,
-        paymasterAddress: TEST_ADDRESS
-      })
-
-      await expect(account.getPaymasterTokenBalance()).rejects.toThrow(
-        'Paymaster token is not configured.'
-      )
-    })
   })
 
   describe('quoteSendTransaction', () => {
@@ -305,22 +308,6 @@ describe('WalletAccountReadOnlySolanaGasless', () => {
       expect(result).toEqual({ fee: 5000n })
     })
 
-    test('should throw error when not connected to paymaster provider', async () => {
-      const disconnectedAccount = new WalletAccountReadOnlySolanaGasless(
-        TEST_ADDRESS,
-        { provider: TEST_RPC_URL }
-      )
-
-      await expect(
-        disconnectedAccount.quoteSendTransaction({
-          to: '4r33xEKAD2cNMrC9NyJy8nb4XmruUKebZ6LZZm65PVUZ',
-          value: 1000n
-        })
-      ).rejects.toThrow(
-        'The wallet must be connected to a paymaster provider to quote transactions.'
-      )
-    })
-
     test('should throw when fee payer does not match paymaster address', async () => {
       await expect(
         readOnlyAccount.quoteSendTransaction({
@@ -386,23 +373,6 @@ describe('WalletAccountReadOnlySolanaGasless', () => {
 
       expect(result).toEqual({ fee: 5000n })
     })
-
-    test('should throw error when not connected to paymaster provider', async () => {
-      const disconnectedAccount = new WalletAccountReadOnlySolanaGasless(
-        TEST_ADDRESS,
-        { provider: TEST_RPC_URL }
-      )
-
-      await expect(
-        disconnectedAccount.quoteTransfer({
-          token: TEST_PAYMASTER_TOKEN,
-          recipient: TEST_ADDRESS,
-          amount: 1000000n
-        })
-      ).rejects.toThrow(
-        'The wallet must be connected to a paymaster provider to quote transfer operations.'
-      )
-    })
   })
 
   describe('getTransactionReceipt', () => {
@@ -453,7 +423,7 @@ describe('WalletAccountReadOnlySolanaGasless', () => {
 
       const readOnlyAccount = new WalletAccountReadOnlySolanaGasless(
         await account.getAddress(),
-        {}
+        TEST_CONFIG
       )
 
       expect(await readOnlyAccount.verify(message, signature)).toBe(true)
@@ -469,7 +439,7 @@ describe('WalletAccountReadOnlySolanaGasless', () => {
       const signature = await account.sign('Message 1')
       const readOnlyAccount = new WalletAccountReadOnlySolanaGasless(
         await account.getAddress(),
-        {}
+        TEST_CONFIG
       )
 
       expect(await readOnlyAccount.verify('Message 1', signature)).toBe(true)

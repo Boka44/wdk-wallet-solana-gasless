@@ -28,6 +28,8 @@ import { findAssociatedTokenPda, getCreateAssociatedTokenIdempotentInstruction, 
 import { AccountRole, createNoopSigner, pipe } from '@solana/kit'
 import { getTransferSolInstruction } from '@solana-program/system'
 
+import { ConfigurationError } from './errors.js'
+
 /** @typedef {import('@tetherto/wdk-wallet').TransactionResult} TransactionResult */
 
 /** @typedef {import('@solana/transaction-messages').TransactionMessage} TransactionMessage */
@@ -65,9 +67,11 @@ export default class WalletAccountReadOnlySolanaGasless extends WalletAccountRea
    * Creates a new solana read-only wallet account.
    *
    * @param {string} addr - The account's address.
-   * @param {Omit<SolanaGaslessWalletConfig, 'transferMaxFee'>} [config] - The configuration object.
+   * @param {Omit<SolanaGaslessWalletConfig, 'transferMaxFee'>} config - The configuration object.
    */
-  constructor (addr, config = {}) {
+  constructor (addr, config) {
+    WalletAccountReadOnlySolanaGasless._validateConfig(config)
+
     const solanaReadOnlyAccount = new WalletAccountReadOnlySolana(addr, config)
 
     super(solanaReadOnlyAccount._address)
@@ -100,34 +104,13 @@ export default class WalletAccountReadOnlySolanaGasless extends WalletAccountRea
      */
     this._rpc = this._solanaReadOnlyAccount._rpc
 
-    const { paymasterUrl, retries = 3 } = config
-
     /**
      * A Kora RPC client for paymaster requests.
      *
      * @protected
-     * @type {KoraClient | undefined}
+     * @type {KoraClient}
      */
-    this._paymaster = undefined
-
-    if (Array.isArray(paymasterUrl)) {
-      if (paymasterUrl.length > 0) {
-        const failoverProvider = new FailoverProvider({ retries })
-        for (const entry of paymasterUrl) {
-          const opts = typeof entry === 'string'
-            ? { rpcUrl: entry }
-            : entry
-          const option = new KoraClient(opts)
-          failoverProvider.addProvider(option)
-        }
-        this._paymaster = failoverProvider.initialize()
-      }
-    } else if (paymasterUrl) {
-      const opts = typeof paymasterUrl === 'string'
-        ? { rpcUrl: paymasterUrl }
-        : paymasterUrl
-      this._paymaster = new KoraClient(opts)
-    }
+    this._paymaster = this._createFailoverProvider()
   }
 
   /**
@@ -183,10 +166,6 @@ export default class WalletAccountReadOnlySolanaGasless extends WalletAccountRea
    * @returns {Promise<Omit<TransactionResult, 'hash'>>} The transaction's quotes.
    */
   async quoteSendTransaction (tx, config = {}) {
-    if (!this._paymaster) {
-      throw new Error('The wallet must be connected to a paymaster provider to quote transactions.')
-    }
-
     let transactionMessage = tx
 
     // Handle native token transfer { to, value } transaction
@@ -213,10 +192,6 @@ export default class WalletAccountReadOnlySolanaGasless extends WalletAccountRea
    * @returns {Promise<Omit<TransferResult, 'hash'>>} The transfer's quotes.
    */
   async quoteTransfer ({ token, recipient, amount }, config = {}) {
-    if (!this._paymaster) {
-      throw new Error('The wallet must be connected to a paymaster provider to quote transfer operations.')
-    }
-
     const transactionMessage = await this._buildSPLTransferTransactionMessage(token, recipient, amount)
 
     const { payment_amount: fee } = await this._getTransactionPaymentInfo(transactionMessage, config)
@@ -282,6 +257,73 @@ export default class WalletAccountReadOnlySolanaGasless extends WalletAccountRea
     )
 
     return transactionMessage
+  }
+
+  /**
+   * Validates the configuration to ensure all required fields are present.
+   *
+   * @protected
+   * @param {Omit<SolanaGaslessWalletConfig, 'transferMaxFee'>} config - The configuration to validate.
+   * @throws {ConfigurationError} If the configuration is invalid or has missing required fields.
+   * @returns {void}
+   */
+  static _validateConfig (config) {
+    let { paymasterUrl, paymasterAddress, paymasterToken } = config
+    const missingFields = []
+
+    if (!Array.isArray(paymasterUrl)) {
+      paymasterUrl = typeof paymasterUrl === 'string' ? paymasterUrl : paymasterUrl?.rpcUrl
+      if (!paymasterUrl) {
+        missingFields.push('paymasterUrl')
+      }
+    }
+
+    if (!paymasterAddress) {
+      missingFields.push('paymasterAddress')
+    }
+
+    if (!paymasterToken) {
+      missingFields.push('paymasterToken')
+    }
+
+    if (missingFields.length > 0) {
+      throw new ConfigurationError(`Missing required paymaster token configuration fields: ${missingFields.join(', ')}.`)
+    }
+  }
+
+  /**
+   * Creates a FailoverProvider from the configured providers. If only one provider is supplied, it is wrapped and returned.
+   *
+   * @protected
+   * @param {Omit<SolanaGaslessWalletConfig, 'transferMaxFee'>} [config] - The configuration object.
+   * @returns {KoraClient} A wrapped KoraClient instance.
+   * @throws {ConfigurationError} If the `paymasterUrl` option is set to an empty array.
+   */
+  _createFailoverProvider (config = this._config) {
+    const { paymasterUrl, retries = 3 } = config
+
+    if (Array.isArray(paymasterUrl)) {
+      if (!paymasterUrl.length) {
+        throw new Error("The 'paymasterUrl' option cannot be set to an empty list.")
+      }
+
+      const failoverProvider = new FailoverProvider({ retries })
+
+      for (const entry of paymasterUrl) {
+        const opts = typeof entry === 'string'
+          ? { rpcUrl: entry }
+          : entry
+        const option = new KoraClient(opts)
+        failoverProvider.addProvider(option)
+      }
+
+      return failoverProvider.initialize()
+    }
+
+    const opts = typeof paymasterUrl === 'string'
+      ? { rpcUrl: paymasterUrl }
+      : paymasterUrl
+    return new KoraClient(opts)
   }
 
   /**

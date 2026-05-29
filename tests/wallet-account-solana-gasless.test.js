@@ -346,23 +346,6 @@ describe('WalletAccountSolanaGasless', () => {
   })
 
   describe('sendTransaction', () => {
-    test('should throw if paymaster not configured', async () => {
-        const noPaymasterAccount = new WalletAccountSolanaGasless(
-          TEST_SEED_PHRASE,
-          "0'/0'",
-          { provider: TEST_RPC_URL }
-        )
-
-        await expect(
-          noPaymasterAccount.sendTransaction({
-            to: '4r33xEKAD2cNMrC9NyJy8nb4XmruUKebZ6LZZm65PVUZ',
-            value: 1000n
-          })
-        ).rejects.toThrow(
-          'The wallet must be connected to a paymaster to send transactions.'
-        )
-    })
-
     test('should throw if account is disposed', async () => {
         const tempAccount = new WalletAccountSolanaGasless(
           TEST_SEED_PHRASE,
@@ -524,24 +507,6 @@ describe('WalletAccountSolanaGasless', () => {
       account = undefined
       wallet.dispose()
       wallet = undefined
-    })
-
-    test('should throw if paymaster not configured', async () => {
-        const noPaymasterAccount = new WalletAccountSolanaGasless(
-          TEST_SEED_PHRASE,
-          "0'/0'",
-          { provider: TEST_RPC_URL }
-        )
-
-        await expect(
-          noPaymasterAccount.transfer({
-            token: TEST_PAYMASTER_TOKEN,
-            recipient: TEST_PAYMASTER_ADDRESS,
-            amount: 1000n
-          })
-        ).rejects.toThrow(
-          'The wallet must be connected to a paymaster to transfer tokens.'
-        )
     })
 
     test('should throw if account is disposed', async () => {

@@ -4,9 +4,9 @@ export default class WalletAccountSolanaGasless extends WalletAccountReadOnlySol
      *
      * @param {string | Uint8Array} seed - The wallet's [BIP-39](https://github.com/bitcoin/bips/blob/master/bip-0039.mediawiki) seed phrase.
      * @param {string} path - The SLIP-0010 derivation path (e.g. "0'/0'/0'").
-     * @param {SolanaGaslessWalletConfig} [config] - The configuration object.
+     * @param {SolanaGaslessWalletConfig} config - The configuration object.
      */
-    constructor(seed: string | Uint8Array, path: string, config?: SolanaGaslessWalletConfig);
+    constructor(seed: string | Uint8Array, path: string, config: SolanaGaslessWalletConfig);
     /**
      * The solana gasless wallet account configuration.
      *

@@ -47,9 +47,9 @@ export default class WalletAccountSolanaGasless extends WalletAccountReadOnlySol
    *
    * @param {string | Uint8Array} seed - The wallet's [BIP-39](https://github.com/bitcoin/bips/blob/master/bip-0039.mediawiki) seed phrase.
    * @param {string} path - The SLIP-0010 derivation path (e.g. "0'/0'/0'").
-   * @param {SolanaGaslessWalletConfig} [config] - The configuration object.
+   * @param {SolanaGaslessWalletConfig} config - The configuration object.
    */
-  constructor (seed, path, config = {}) {
+  constructor (seed, path, config) {
     const ownerAccount = new WalletAccountSolana(seed, path, config)
 
     super(ownerAccount._address, config)
@@ -123,10 +123,6 @@ export default class WalletAccountSolanaGasless extends WalletAccountReadOnlySol
       throw new Error('The wallet account has been disposed.')
     }
 
-    if (!this._paymaster) {
-      throw new Error('The wallet must be connected to a paymaster to sign transactions.')
-    }
-
     const { transactionMessage } = await this._populateTransactionMessage(tx, config)
 
     const partiallySignedTransactionMessage = await partiallySignTransactionMessageWithSigners(transactionMessage)
@@ -156,10 +152,6 @@ export default class WalletAccountSolanaGasless extends WalletAccountReadOnlySol
       throw new Error('The wallet account has been disposed.')
     }
 
-    if (!this._paymaster) {
-      throw new Error('The wallet must be connected to a paymaster to send transactions.')
-    }
-
     const { fee, transactionMessage } = await this._populateTransactionMessage(tx, config)
 
     const partiallySignedTransactionMessage = await partiallySignTransactionMessageWithSigners(transactionMessage)
@@ -182,10 +174,6 @@ export default class WalletAccountSolanaGasless extends WalletAccountReadOnlySol
   async transfer ({ token, recipient, amount }, config = {}) {
     if (!this.keyPair.privateKey) {
       throw new Error('The wallet account has been disposed.')
-    }
-
-    if (!this._paymaster) {
-      throw new Error('The wallet must be connected to a paymaster to transfer tokens.')
     }
 
     const mergedConfig = { ...this._config, ...config }
