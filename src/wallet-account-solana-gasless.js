@@ -127,13 +127,7 @@ export default class WalletAccountSolanaGasless extends WalletAccountReadOnlySol
       throw new Error('The wallet must be connected to a paymaster to sign transactions.')
     }
 
-    const mergedConfig = { ...this._config, ...config }
-
-    const { fee, transactionMessage } = await this._populateTransactionMessage(tx, mergedConfig)
-
-    if (mergedConfig.transferMaxFee !== undefined && fee >= mergedConfig.transferMaxFee) {
-      throw new Error('Exceeded maximum fee cost for transfer operation.')
-    }
+    const { transactionMessage } = await this._populateTransactionMessage(tx, config)
 
     const partiallySignedTransactionMessage = await partiallySignTransactionMessageWithSigners(transactionMessage)
 
@@ -166,13 +160,7 @@ export default class WalletAccountSolanaGasless extends WalletAccountReadOnlySol
       throw new Error('The wallet must be connected to a paymaster to send transactions.')
     }
 
-    const mergedConfig = { ...this._config, ...config }
-
-    const { fee, transactionMessage } = await this._populateTransactionMessage(tx, mergedConfig)
-
-    if (mergedConfig.transferMaxFee !== undefined && fee >= mergedConfig.transferMaxFee) {
-      throw new Error('Exceeded maximum fee cost for transfer operation.')
-    }
+    const { fee, transactionMessage } = await this._populateTransactionMessage(tx, config)
 
     const partiallySignedTransactionMessage = await partiallySignTransactionMessageWithSigners(transactionMessage)
 
@@ -200,9 +188,21 @@ export default class WalletAccountSolanaGasless extends WalletAccountReadOnlySol
       throw new Error('The wallet must be connected to a paymaster to transfer tokens.')
     }
 
-    const transactionMessage = await this._buildSPLTransferTransactionMessage(token, recipient, amount)
+    const mergedConfig = { ...this._config, ...config }
 
-    const { hash, fee } = await this.sendTransaction(transactionMessage, config)
+    const tx = await this._buildSPLTransferTransactionMessage(token, recipient, amount)
+
+    const { fee, transactionMessage } = await this._populateTransactionMessage(tx, mergedConfig)
+
+    if (mergedConfig.transferMaxFee !== undefined && fee >= mergedConfig.transferMaxFee) {
+      throw new Error('Exceeded maximum fee cost for transfer operation.')
+    }
+
+    const partiallySignedTransactionMessage = await partiallySignTransactionMessageWithSigners(transactionMessage)
+
+    const encodedTransaction = getBase64EncodedWireTransaction(partiallySignedTransactionMessage)
+
+    const { signature: hash } = await this._paymaster.signAndSendTransaction({ transaction: encodedTransaction })
 
     return { hash, fee }
   }
