@@ -14,6 +14,8 @@
 
 'use strict'
 
+import { MaximumFeeExceededError, ProviderRequiredError } from '@tetherto/wdk-wallet'
+
 import { WalletAccountSolana } from '@tetherto/wdk-wallet-solana'
 
 import { createKeyPairSignerFromPrivateKeyBytes, partiallySignTransactionMessageWithSigners } from '@solana/signers'
@@ -24,7 +26,10 @@ import { AccountRole, decompileTransactionMessageFetchingLookupTables, getBase64
 
 import WalletAccountReadOnlySolanaGasless from './wallet-account-read-only-solana-gasless.js'
 
-/** @typedef {import("@tetherto/wdk-wallet").IWalletAccount} IWalletAccount */
+/**
+ * @template TSignedTransaction
+ * @typedef {import('@tetherto/wdk-wallet').IWalletAccount<TSignedTransaction>} IWalletAccount
+ */
 /** @typedef {import('@tetherto/wdk-wallet').KeyPair} KeyPair */
 /** @typedef {import('@tetherto/wdk-wallet').TransactionResult} TransactionResult */
 
@@ -116,7 +121,7 @@ export default class WalletAccountSolanaGasless extends WalletAccountReadOnlySol
    * @param {SolanaTransaction} tx - The transaction to sign.
    * @param {SolanaGaslessWalletPaymasterConfigOverrides} [config] - If set, overrides the given configuration options.
    * @returns {Promise<FullySignedTransaction>} The signed transaction.
-   * @throws {Error} If the transaction's cost exceeds the maximum transaction fee option.
+   * @throws {MaximumFeeExceededError} If the transaction's cost exceeds the maximum transaction fee option.
    */
   async signTransaction (tx, config = {}) {
     const mergedConfig = { ...this._config, ...config }
@@ -124,7 +129,7 @@ export default class WalletAccountSolanaGasless extends WalletAccountReadOnlySol
     const { fee, transactionMessage } = await this._populateTransactionMessage(tx, config)
 
     if (mergedConfig.transactionMaxFee !== undefined && fee > mergedConfig.transactionMaxFee) {
-      throw new Error('Exceeded maximum fee cost for transaction operation.')
+      throw new MaximumFeeExceededError('Exceeded maximum fee cost for transaction operation.')
     }
 
     const partiallySignedTransactionMessage = await partiallySignTransactionMessageWithSigners(transactionMessage)
@@ -149,7 +154,7 @@ export default class WalletAccountSolanaGasless extends WalletAccountReadOnlySol
    * @param {SolanaTransaction | FullySignedTransaction} tx - The transaction. Either an unsigned transaction or an already-signed transaction (as returned by `signTransaction`).
    * @param {SolanaGaslessWalletPaymasterConfigOverrides} [config] - If set, overrides the given configuration options.
    * @returns {Promise<TransactionResult>} The transaction's result.
-   * @throws {Error} If the transaction's cost exceeds the maximum transaction fee option.
+   * @throws {MaximumFeeExceededError} If the transaction's cost exceeds the maximum transaction fee option.
    * @note When an already-signed transaction is passed, the paymaster has already co-signed it at sign time, so it is not contacted again and the transaction is broadcast directly to the network. The returned `fee` is decoded from the gasless payment instruction embedded in the signed message, and the `transactionMaxFee` check is re-applied before broadcasting.
    */
   async sendTransaction (tx, config = {}) {
@@ -159,7 +164,7 @@ export default class WalletAccountSolanaGasless extends WalletAccountReadOnlySol
       const fee = await this._getSignedTransactionFee(tx)
 
       if (mergedConfig.transactionMaxFee !== undefined && fee > mergedConfig.transactionMaxFee) {
-        throw new Error('Exceeded maximum fee cost for transaction operation.')
+        throw new MaximumFeeExceededError('Exceeded maximum fee cost for transaction operation.')
       }
 
       const hash = await this._broadcastSignedTransaction(tx)
@@ -172,7 +177,7 @@ export default class WalletAccountSolanaGasless extends WalletAccountReadOnlySol
     const { fee, transactionMessage } = await this._populateTransactionMessage(tx, config)
 
     if (mergedConfig.transactionMaxFee !== undefined && fee > mergedConfig.transactionMaxFee) {
-      throw new Error('Exceeded maximum fee cost for transaction operation.')
+      throw new MaximumFeeExceededError('Exceeded maximum fee cost for transaction operation.')
     }
 
     const partiallySignedTransactionMessage = await partiallySignTransactionMessageWithSigners(transactionMessage)
@@ -211,7 +216,7 @@ export default class WalletAccountSolanaGasless extends WalletAccountReadOnlySol
    * @param {TransferOptions} options - The transfer's options.
    * @param {SolanaGaslessWalletPaymasterConfigOverrides} [config] - If set, overrides the given configuration options.
    * @returns {Promise<TransferResult>} The transfer's result.
-   * @throws {Error} If the transfer's cost exceeds the maximum transfer fee option.
+   * @throws {MaximumFeeExceededError} If the transfer's cost exceeds the maximum transfer fee option.
    */
   async transfer ({ token, recipient, amount }, config = {}) {
     const mergedConfig = { ...this._config, ...config }
@@ -221,7 +226,7 @@ export default class WalletAccountSolanaGasless extends WalletAccountReadOnlySol
     const { fee, transactionMessage } = await this._populateTransactionMessage(tx, mergedConfig)
 
     if (mergedConfig.transferMaxFee !== undefined && fee > mergedConfig.transferMaxFee) {
-      throw new Error('Exceeded maximum fee cost for transfer operation.')
+      throw new MaximumFeeExceededError('Exceeded maximum fee cost for transfer operation.')
     }
 
     const partiallySignedTransactionMessage = await partiallySignTransactionMessageWithSigners(transactionMessage)
@@ -302,10 +307,11 @@ export default class WalletAccountSolanaGasless extends WalletAccountReadOnlySol
    * @private
    * @param {FullySignedTransaction} signedTransaction - The signed transaction.
    * @returns {Promise<string>} The transaction's signature.
+   * @throws {ProviderRequiredError} If the wallet is not connected to a provider.
    */
   async _broadcastSignedTransaction (signedTransaction) {
     if (!this._rpc) {
-      throw new Error('The wallet must be connected to a provider to send transactions.')
+      throw new ProviderRequiredError('The wallet must be connected to a provider to send transactions.')
     }
 
     const encodedTransaction = getBase64EncodedWireTransaction(signedTransaction)
@@ -322,10 +328,11 @@ export default class WalletAccountSolanaGasless extends WalletAccountReadOnlySol
    * @private
    * @param {FullySignedTransaction} signedTransaction - The signed transaction.
    * @returns {Promise<bigint>} The gasless payment amount (in the paymaster token's base units).
+   * @throws {ProviderRequiredError} If the wallet is not connected to a provider.
    */
   async _getSignedTransactionFee (signedTransaction) {
     if (!this._rpc) {
-      throw new Error('The wallet must be connected to a provider to quote transactions.')
+      throw new ProviderRequiredError('The wallet must be connected to a provider to quote transactions.')
     }
 
     const compiledTransactionMessage = getCompiledTransactionMessageDecoder().decode(signedTransaction.messageBytes)

@@ -35,3 +35,13 @@ export { default } from './src/wallet-manager-solana-gasless.js'
 export { default as WalletAccountReadOnlySolanaGasless } from './src/wallet-account-read-only-solana-gasless.js'
 
 export { default as WalletAccountSolanaGasless } from './src/wallet-account-solana-gasless.js'
+
+export {
+  AssertionError,
+  MaximumFeeExceededError,
+  NoSuchElementError,
+  ProviderRequiredError,
+  TimeoutError,
+  ValueError,
+  WdkError
+} from '@tetherto/wdk-wallet'

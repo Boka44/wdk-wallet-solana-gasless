@@ -9,7 +9,7 @@ export type WaitForTransactionTarget = import("@tetherto/wdk-wallet").WaitForTra
 export type WaitForTransactionOptions = import("@tetherto/wdk-wallet").WaitForTransactionOptions;
 export type TransferOptions = import("@tetherto/wdk-wallet-solana").TransferOptions;
 export type TransferResult = import("@tetherto/wdk-wallet-solana").TransferResult;
-export { ConfigurationError } from "./src/errors.js";
+export { AssertionError, MaximumFeeExceededError, NoSuchElementError, ProviderRequiredError, TimeoutError, ValueError, WdkError } from "@tetherto/wdk-wallet";
 export type FullySignedTransaction = import("./src/wallet-account-solana-gasless.js").FullySignedTransaction;
 export type SolanaTransactionReceipt = import("./src/wallet-account-read-only-solana-gasless.js").SolanaTransactionReceipt;
 export type SolanaTransactionDetails = import("@tetherto/wdk-wallet-solana").SolanaTransactionDetails;

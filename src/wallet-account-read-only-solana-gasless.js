@@ -14,7 +14,7 @@
 
 'use strict'
 
-import { WalletAccountReadOnly } from '@tetherto/wdk-wallet'
+import { WalletAccountReadOnly, ValueError } from '@tetherto/wdk-wallet'
 
 import { WalletAccountReadOnlySolana } from '@tetherto/wdk-wallet-solana'
 
@@ -27,8 +27,6 @@ import { compileTransaction, getBase64EncodedWireTransaction } from '@solana/tra
 import { findAssociatedTokenPda, getCreateAssociatedTokenIdempotentInstruction, getTransferInstruction, TOKEN_PROGRAM_ADDRESS } from '@solana-program/token'
 import { AccountRole, blockhash, createNoopSigner, getU64Decoder, pipe } from '@solana/kit'
 import { getTransferSolInstruction } from '@solana-program/system'
-
-import { ConfigurationError } from './errors.js'
 
 /** @typedef {import('@tetherto/wdk-wallet').TransactionResult} TransactionResult */
 /** @typedef {import('@tetherto/wdk-wallet').TransactionReceipt} TransactionReceipt */
@@ -149,13 +147,13 @@ export default class WalletAccountReadOnlySolanaGasless extends WalletAccountRea
    * Returns the account's balance for the paymaster token provided in the wallet account configuration.
    *
    * @returns {Promise<bigint>} The paymaster token balance (in base unit).
-   * @throws {Error} If no paymaster token is configured (sponsored or native-coins mode).
+   * @throws {ValueError} If no paymaster token is configured (sponsored or native-coins mode).
    */
   async getPaymasterTokenBalance () {
     const { paymasterToken } = this._config
 
     if (!paymasterToken) {
-      throw new Error('Paymaster token is not configured.')
+      throw new ValueError('Paymaster token is not configured.')
     }
 
     return await this.getTokenBalance(paymasterToken.address)
@@ -299,7 +297,7 @@ export default class WalletAccountReadOnlySolanaGasless extends WalletAccountRea
    *
    * @protected
    * @param {Omit<SolanaGaslessWalletConfig, 'transferMaxFee' | 'transactionMaxFee'>} config - The configuration to validate.
-   * @throws {ConfigurationError} If the configuration is invalid or has missing required fields.
+   * @throws {ValueError} If the configuration is invalid or has missing required fields.
    * @returns {void}
    */
   static _validateConfig (config) {
@@ -322,7 +320,7 @@ export default class WalletAccountReadOnlySolanaGasless extends WalletAccountRea
     }
 
     if (missingFields.length > 0) {
-      throw new ConfigurationError(`Missing required paymaster token configuration fields: ${missingFields.join(', ')}.`)
+      throw new ValueError(`Missing required paymaster token configuration fields: ${missingFields.join(', ')}.`)
     }
   }
 
@@ -332,14 +330,14 @@ export default class WalletAccountReadOnlySolanaGasless extends WalletAccountRea
    * @protected
    * @param {Omit<SolanaGaslessWalletConfig, 'transferMaxFee' | 'transactionMaxFee'>} [config] - The configuration object.
    * @returns {KoraClient} A wrapped KoraClient instance.
-   * @throws {ConfigurationError} If the `paymasterUrl` option is set to an empty array.
+   * @throws {ValueError} If the `paymasterUrl` option is set to an empty array.
    */
   _createFailoverProvider (config = this._config) {
     const { paymasterUrl, retries = 3 } = config
 
     if (Array.isArray(paymasterUrl)) {
       if (!paymasterUrl.length) {
-        throw new Error("The 'paymasterUrl' option cannot be set to an empty list.")
+        throw new ValueError("The 'paymasterUrl' option cannot be set to an empty list.")
       }
 
       const failoverProvider = new FailoverProvider({ retries })
@@ -370,15 +368,16 @@ export default class WalletAccountReadOnlySolanaGasless extends WalletAccountRea
    * @param {string} recipient - The recipient's wallet address (base58-encoded public key).
    * @param {number | bigint} amount - The amount to transfer in token's base units (must be ≤ 2^64-1).
    * @returns {Promise<TransactionMessage>} The constructed transaction message.
+   * @throws {ValueError} If the amount exceeds the representable range.
    * @todo Support Token-2022 (Token Extensions Program).
    * @todo Support transfer with memo for tokens that require it.
    */
   async _buildSPLTransferTransactionMessage (token, recipient, amount) {
     if (typeof amount === 'bigint' && amount > MAX_U64) {
-      throw new Error('Amount exceeds u64 maximum value')
+      throw new ValueError('Amount exceeds u64 maximum value')
     }
     if (typeof amount === 'number' && amount > Number.MAX_SAFE_INTEGER) {
-      throw new Error('Amount exceeds safe integer range')
+      throw new ValueError('Amount exceeds safe integer range')
     }
 
     const addr = await this.getAddress()
@@ -461,13 +460,13 @@ export default class WalletAccountReadOnlySolanaGasless extends WalletAccountRea
    * @protected
    * @param {SolanaTransaction} tx - The transaction.
    * @returns {Promise<void>} Resolves when the transaction has no explicit fee payer or it matches the paymaster address.
-   * @throws {Error} If the transaction fee payer does not match the paymaster address.
+   * @throws {ValueError} If the transaction fee payer does not match the paymaster address.
    */
   async _assertFeePayer (tx) {
     if (tx.feePayer) {
       const feePayerAddress = typeof tx.feePayer === 'string' ? tx.feePayer : tx.feePayer.address
       if (feePayerAddress !== this._config.paymasterAddress) {
-        throw new Error(`Transaction fee payer (${feePayerAddress}) does not match paymaster address (${this._config.paymasterAddress})`)
+        throw new ValueError(`Transaction fee payer (${feePayerAddress}) does not match paymaster address (${this._config.paymasterAddress})`)
       }
     }
   }
@@ -479,7 +478,6 @@ export default class WalletAccountReadOnlySolanaGasless extends WalletAccountRea
    * @param {TransactionMessage} transactionMessage - The transaction message to fetch the payment info.
    * @param {SolanaGaslessWalletPaymasterConfigOverrides} [config] - If set, overrides the given configuration options.
    * @returns {Promise<GetPaymentInstructionResponse>} The payment info.
-   * @throws {Error} If the paymaster payment instruction is not a recognized SPL transfer to the paymaster token account.
    */
   async _getTransactionPaymentInfo (transactionMessage, config = {}) {
     const mergedConfig = { ...this._config, ...config }
@@ -551,11 +549,11 @@ export default class WalletAccountReadOnlySolanaGasless extends WalletAccountRea
    * @param {object} paymentInstruction - The paymaster payment instruction.
    * @param {string} paymasterTokenAccount - The paymaster associated token account.
    * @returns {bigint} The transfer amount encoded in the instruction.
-   * @throws {Error} If the instruction is not a recognized SPL transfer to the paymaster token account.
+   * @throws {ValueError} If the instruction is not a recognized SPL transfer to the paymaster token account.
    */
   _getPaymentInstructionAmount (paymentInstruction, paymasterTokenAccount) {
     if (!this._isPaymentInstruction(paymentInstruction, paymasterTokenAccount)) {
-      throw new Error('Invalid payment instruction from paymaster.')
+      throw new ValueError('Invalid payment instruction from paymaster.')
     }
 
     return BigInt(getU64Decoder().decode(paymentInstruction.data, 1))
