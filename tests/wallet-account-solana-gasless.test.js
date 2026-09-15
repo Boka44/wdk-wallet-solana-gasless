@@ -644,6 +644,26 @@ describe('WalletAccountSolanaGasless', () => {
         .rejects.toThrow('Exceeded maximum fee cost for transaction operation.')
       expect(mockRpc.sendTransaction).not.toHaveBeenCalled()
     })
+
+    test('should enforce the max-fee check for a signed transaction using an override paymaster token', async () => {
+      mockRpc.sendTransaction = jest.fn().mockReturnValue({
+        send: jest.fn().mockResolvedValue('signed-broadcast-sig')
+      })
+
+      const overrideConfig = {
+        paymasterToken: { address: TEST_PAYMASTER_TOKEN_OVERRIDE }
+      }
+      const signedTx = await account.signTransaction({
+        to: '9CXtfmGEtfjmtPKnq2QZcRzCiMzE9T8NQfRicJZetvk2',
+        value: 1000000n
+      }, overrideConfig)
+
+      await expect(account.sendTransaction(signedTx, {
+        ...overrideConfig,
+        transactionMaxFee: 0n
+      })).rejects.toThrow('Exceeded maximum fee cost for transaction operation.')
+      expect(mockRpc.sendTransaction).not.toHaveBeenCalled()
+    })
   })
 
   describe('quoteSendTransaction', () => {
@@ -664,6 +684,20 @@ describe('WalletAccountSolanaGasless', () => {
       expect(fee).toBe(5000n)
       expect(mockRpc.sendTransaction).not.toHaveBeenCalled()
       expect(mockPaymaster.signAndSendTransaction).not.toHaveBeenCalled()
+    })
+
+    test('should quote the signed fee using an override paymaster token', async () => {
+      const overrideConfig = {
+        paymasterToken: { address: TEST_PAYMASTER_TOKEN_OVERRIDE }
+      }
+      const signedTx = await account.signTransaction({
+        to: '9CXtfmGEtfjmtPKnq2QZcRzCiMzE9T8NQfRicJZetvk2',
+        value: 1000000n
+      }, overrideConfig)
+
+      const { fee } = await account.quoteSendTransaction(signedTx, overrideConfig)
+
+      expect(fee).toBe(5000n)
     })
   })
 

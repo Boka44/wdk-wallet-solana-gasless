@@ -156,7 +156,7 @@ export default class WalletAccountSolanaGasless extends WalletAccountReadOnlySol
     if (this._isSignedTransaction(tx)) {
       const mergedConfig = { ...this._config, ...config }
 
-      const fee = await this._getSignedTransactionFee(tx)
+      const fee = await this._getSignedTransactionFee(tx, mergedConfig.paymasterToken.address)
 
       if (mergedConfig.transactionMaxFee !== undefined && fee > mergedConfig.transactionMaxFee) {
         throw new Error('Exceeded maximum fee cost for transaction operation.')
@@ -197,7 +197,8 @@ export default class WalletAccountSolanaGasless extends WalletAccountReadOnlySol
    */
   async quoteSendTransaction (tx, config = {}) {
     if (this._isSignedTransaction(tx)) {
-      const fee = await this._getSignedTransactionFee(tx)
+      const mergedConfig = { ...this._config, ...config }
+      const fee = await this._getSignedTransactionFee(tx, mergedConfig.paymasterToken.address)
 
       return { fee }
     }
@@ -321,9 +322,10 @@ export default class WalletAccountSolanaGasless extends WalletAccountReadOnlySol
    *
    * @private
    * @param {FullySignedTransaction} signedTransaction - The signed transaction.
+   * @param {string} [paymasterTokenAddress] - The paymaster fee token mint used by the signed transaction.
    * @returns {Promise<bigint>} The gasless payment amount (in the paymaster token's base units).
    */
-  async _getSignedTransactionFee (signedTransaction) {
+  async _getSignedTransactionFee (signedTransaction, paymasterTokenAddress = this._config.paymasterToken.address) {
     if (!this._rpc) {
       throw new Error('The wallet must be connected to a provider to quote transactions.')
     }
@@ -332,7 +334,7 @@ export default class WalletAccountSolanaGasless extends WalletAccountReadOnlySol
 
     const { instructions } = await decompileTransactionMessageFetchingLookupTables(compiledTransactionMessage, this._rpc)
 
-    const paymasterTokenAccount = await this._getPaymasterAssociatedTokenAccount()
+    const paymasterTokenAccount = await this._getPaymasterAssociatedTokenAccount(paymasterTokenAddress)
 
     const paymentInstruction = instructions.find((instruction) =>
       this._isPaymentInstruction(instruction, paymasterTokenAccount))
