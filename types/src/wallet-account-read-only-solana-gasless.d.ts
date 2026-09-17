@@ -189,6 +189,16 @@ export default class WalletAccountReadOnlySolanaGasless extends WalletAccountRea
      */
     protected _getTransactionPaymentInfo(transactionMessage: TransactionMessage, config?: SolanaGaslessWalletPaymasterConfigOverrides): Promise<GetPaymentInstructionResponse>;
     /**
+     * Merges a caller's configuration overrides on top of the account's configuration. Keys whose
+     * override value is `undefined` keep the configured value, so an option left unset in an
+     * override object does not erase it.
+     *
+     * @protected
+     * @param {SolanaGaslessWalletPaymasterConfigOverrides} config - The configuration overrides.
+     * @returns {Omit<SolanaGaslessWalletConfig, 'transferMaxFee' | 'transactionMaxFee'> & SolanaGaslessWalletPaymasterConfigOverrides} The merged configuration.
+     */
+    protected _mergeConfig(config: SolanaGaslessWalletPaymasterConfigOverrides): Omit<SolanaGaslessWalletConfig, "transferMaxFee" | "transactionMaxFee"> & SolanaGaslessWalletPaymasterConfigOverrides;
+    /**
      * @protected
      * @param {string} [paymasterTokenAddress] - The paymaster fee token mint.
      * @returns {Promise<string>} The paymaster's associated token account for that mint.
