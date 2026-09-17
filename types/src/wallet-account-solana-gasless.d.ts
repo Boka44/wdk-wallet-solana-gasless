@@ -118,7 +118,10 @@ export default class WalletAccountSolanaGasless extends WalletAccountReadOnlySol
      *
      * @private
      * @param {FullySignedTransaction} signedTransaction - The signed transaction.
+     * @param {string} [paymasterTokenAddress] - The paymaster fee token mint used by the signed transaction.
      * @returns {Promise<bigint>} The gasless payment amount (in the paymaster token's base units).
+     * @throws {Error} If the wallet is not connected to a provider.
+     * @throws {Error} If the signed transaction carries no payment instruction for the given paymaster token.
      */
     private _getSignedTransactionFee;
     /**
