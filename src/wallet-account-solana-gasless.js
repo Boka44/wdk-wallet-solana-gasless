@@ -119,7 +119,7 @@ export default class WalletAccountSolanaGasless extends WalletAccountReadOnlySol
    * @throws {Error} If the transaction's cost exceeds the maximum transaction fee option.
    */
   async signTransaction (tx, config = {}) {
-    const mergedConfig = { ...this._config, ...config }
+    const mergedConfig = this._mergeConfig(config)
 
     const { fee, transactionMessage } = await this._populateTransactionMessage(tx, config)
 
@@ -150,11 +150,11 @@ export default class WalletAccountSolanaGasless extends WalletAccountReadOnlySol
    * @param {SolanaGaslessWalletPaymasterConfigOverrides} [config] - If set, overrides the given configuration options.
    * @returns {Promise<TransactionResult>} The transaction's result.
    * @throws {Error} If the transaction's cost exceeds the maximum transaction fee option.
-   * @note When an already-signed transaction is passed, the paymaster has already co-signed it at sign time, so it is not contacted again and the transaction is broadcast directly to the network. The returned `fee` is decoded from the gasless payment instruction embedded in the signed message, and the `transactionMaxFee` check is re-applied before broadcasting.
+   * @note When an already-signed transaction is passed, the paymaster has already co-signed it at sign time, so it is not contacted again and the transaction is broadcast directly to the network. The returned `fee` is decoded from the gasless payment instruction embedded in the signed message, and the `transactionMaxFee` check is re-applied before broadcasting. The `paymasterToken` option must name the same token the transaction was signed with.
    */
   async sendTransaction (tx, config = {}) {
     if (this._isSignedTransaction(tx)) {
-      const mergedConfig = { ...this._config, ...config }
+      const mergedConfig = this._mergeConfig(config)
 
       const fee = await this._getSignedTransactionFee(tx, mergedConfig.paymasterToken.address)
 
@@ -167,7 +167,7 @@ export default class WalletAccountSolanaGasless extends WalletAccountReadOnlySol
       return { hash, fee }
     }
 
-    const mergedConfig = { ...this._config, ...config }
+    const mergedConfig = this._mergeConfig(config)
 
     const { fee, transactionMessage } = await this._populateTransactionMessage(tx, config)
 
@@ -193,11 +193,11 @@ export default class WalletAccountSolanaGasless extends WalletAccountReadOnlySol
    * @param {SolanaTransaction | FullySignedTransaction} tx - The transaction. Either an unsigned transaction or an already-signed transaction (as returned by `signTransaction`).
    * @param {SolanaGaslessWalletPaymasterConfigOverrides} [config] - If set, overrides the given configuration options.
    * @returns {Promise<Omit<TransactionResult, 'hash'>>} The transaction's quotes.
-   * @note When an already-signed transaction is passed, the returned `fee` is decoded from the gasless payment instruction embedded in the signed message (matching `sendTransaction`).
+   * @note When an already-signed transaction is passed, the returned `fee` is decoded from the gasless payment instruction embedded in the signed message (matching `sendTransaction`). The `paymasterToken` option must name the same token the transaction was signed with.
    */
   async quoteSendTransaction (tx, config = {}) {
     if (this._isSignedTransaction(tx)) {
-      const mergedConfig = { ...this._config, ...config }
+      const mergedConfig = this._mergeConfig(config)
       const fee = await this._getSignedTransactionFee(tx, mergedConfig.paymasterToken.address)
 
       return { fee }
@@ -215,7 +215,7 @@ export default class WalletAccountSolanaGasless extends WalletAccountReadOnlySol
    * @throws {Error} If the transfer's cost exceeds the maximum transfer fee option.
    */
   async transfer ({ token, recipient, amount }, config = {}) {
-    const mergedConfig = { ...this._config, ...config }
+    const mergedConfig = this._mergeConfig(config)
 
     const tx = await this._buildSPLTransferTransactionMessage(token, recipient, amount)
 
@@ -324,6 +324,8 @@ export default class WalletAccountSolanaGasless extends WalletAccountReadOnlySol
    * @param {FullySignedTransaction} signedTransaction - The signed transaction.
    * @param {string} [paymasterTokenAddress] - The paymaster fee token mint used by the signed transaction.
    * @returns {Promise<bigint>} The gasless payment amount (in the paymaster token's base units).
+   * @throws {Error} If the wallet is not connected to a provider.
+   * @throws {Error} If the signed transaction carries no payment instruction for the given paymaster token.
    */
   async _getSignedTransactionFee (signedTransaction, paymasterTokenAddress = this._config.paymasterToken.address) {
     if (!this._rpc) {
@@ -339,9 +341,11 @@ export default class WalletAccountSolanaGasless extends WalletAccountReadOnlySol
     const paymentInstruction = instructions.find((instruction) =>
       this._isPaymentInstruction(instruction, paymasterTokenAccount))
 
-    return paymentInstruction
-      ? this._getPaymentInstructionAmount(paymentInstruction, paymasterTokenAccount)
-      : 0n
+    if (!paymentInstruction) {
+      throw new Error('No gasless payment instruction found for the given paymaster token.')
+    }
+
+    return this._getPaymentInstructionAmount(paymentInstruction, paymasterTokenAccount)
   }
 
   /**

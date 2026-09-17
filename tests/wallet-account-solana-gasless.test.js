@@ -392,6 +392,18 @@ describe('WalletAccountSolanaGasless', () => {
         expect(mockPaymaster.signAndSendTransaction).toHaveBeenCalled()
     })
 
+    test('should keep the configured paymaster token when an unsigned send passes it as undefined', async () => {
+        const result = await account.sendTransaction({
+          to: TEST_RECIPIENT_ADDRESS,
+          value: 1000000n
+        }, { paymasterToken: undefined })
+
+        expect(result).toEqual({
+          hash: DUMMY_SIGNATURE,
+          fee: 5000n
+        })
+    })
+
     test('should successfully send a transaction with number value', async () => {
         await account.sendTransaction({
           to: TEST_RECIPIENT_ADDRESS,
@@ -664,6 +676,38 @@ describe('WalletAccountSolanaGasless', () => {
       })).rejects.toThrow('Exceeded maximum fee cost for transaction operation.')
       expect(mockRpc.sendTransaction).not.toHaveBeenCalled()
     })
+
+    test('should keep the configured paymaster token when the override sets it to undefined', async () => {
+      mockRpc.sendTransaction = jest.fn().mockReturnValue({
+        send: jest.fn().mockResolvedValue('signed-broadcast-sig')
+      })
+
+      const signedTx = await account.signTransaction({
+        to: '9CXtfmGEtfjmtPKnq2QZcRzCiMzE9T8NQfRicJZetvk2',
+        value: 1000000n
+      })
+
+      const result = await account.sendTransaction(signedTx, { paymasterToken: undefined })
+
+      expect(result).toEqual({ hash: 'signed-broadcast-sig', fee: 5000n })
+    })
+
+    test('should reject an already-signed transaction whose paymaster token does not match the override', async () => {
+      mockRpc.sendTransaction = jest.fn().mockReturnValue({
+        send: jest.fn().mockResolvedValue('signed-broadcast-sig')
+      })
+
+      const signedTx = await account.signTransaction({
+        to: '9CXtfmGEtfjmtPKnq2QZcRzCiMzE9T8NQfRicJZetvk2',
+        value: 1000000n
+      })
+
+      await expect(account.sendTransaction(signedTx, {
+        paymasterToken: { address: TEST_PAYMASTER_TOKEN_OVERRIDE },
+        transactionMaxFee: 0n
+      })).rejects.toThrow('No gasless payment instruction found for the given paymaster token.')
+      expect(mockRpc.sendTransaction).not.toHaveBeenCalled()
+    })
   })
 
   describe('quoteSendTransaction', () => {
@@ -698,6 +742,27 @@ describe('WalletAccountSolanaGasless', () => {
       const { fee } = await account.quoteSendTransaction(signedTx, overrideConfig)
 
       expect(fee).toBe(5000n)
+    })
+
+    test('should keep the configured paymaster token when the override sets it to undefined', async () => {
+      const signedTx = await account.signTransaction({
+        to: '9CXtfmGEtfjmtPKnq2QZcRzCiMzE9T8NQfRicJZetvk2',
+        value: 1000000n
+      })
+
+      const { fee } = await account.quoteSendTransaction(signedTx, { paymasterToken: undefined })
+
+      expect(fee).toBe(5000n)
+    })
+
+    test('should reject the quote when the paymaster token does not match the signed transaction', async () => {
+      const signedTx = await account.signTransaction({
+        to: '9CXtfmGEtfjmtPKnq2QZcRzCiMzE9T8NQfRicJZetvk2',
+        value: 1000000n
+      }, { paymasterToken: { address: TEST_PAYMASTER_TOKEN_OVERRIDE } })
+
+      await expect(account.quoteSendTransaction(signedTx))
+        .rejects.toThrow('No gasless payment instruction found for the given paymaster token.')
     })
   })
 

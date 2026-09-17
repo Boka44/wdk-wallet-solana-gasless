@@ -482,7 +482,7 @@ export default class WalletAccountReadOnlySolanaGasless extends WalletAccountRea
    * @throws {Error} If the paymaster payment instruction is not a recognized SPL transfer to the paymaster token account.
    */
   async _getTransactionPaymentInfo (transactionMessage, config = {}) {
-    const mergedConfig = { ...this._config, ...config }
+    const mergedConfig = this._mergeConfig(config)
 
     const addr = await this.getAddress()
 
@@ -512,6 +512,21 @@ export default class WalletAccountReadOnlySolanaGasless extends WalletAccountRea
       payment_amount: Number(paymentAmount),
       payment_instruction: upgradedPaymentInstruction
     }
+  }
+
+  /**
+   * Merges a caller's configuration overrides on top of the account's configuration. Keys whose
+   * override value is `undefined` keep the configured value, so an option left unset in an
+   * override object does not erase it.
+   *
+   * @protected
+   * @param {SolanaGaslessWalletPaymasterConfigOverrides} config - The configuration overrides.
+   * @returns {Omit<SolanaGaslessWalletConfig, 'transferMaxFee' | 'transactionMaxFee'> & SolanaGaslessWalletPaymasterConfigOverrides} The merged configuration.
+   */
+  _mergeConfig (config) {
+    const overrides = Object.entries(config).filter(([, value]) => value !== undefined)
+
+    return { ...this._config, ...Object.fromEntries(overrides) }
   }
 
   /**

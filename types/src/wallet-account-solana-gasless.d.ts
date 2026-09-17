@@ -69,7 +69,7 @@ export default class WalletAccountSolanaGasless extends WalletAccountReadOnlySol
      * @param {SolanaGaslessWalletPaymasterConfigOverrides} [config] - If set, overrides the given configuration options.
      * @returns {Promise<TransactionResult>} The transaction's result.
      * @throws {Error} If the transaction's cost exceeds the maximum transaction fee option.
-     * @note When an already-signed transaction is passed, the paymaster has already co-signed it at sign time, so it is not contacted again and the transaction is broadcast directly to the network. The returned `fee` is decoded from the gasless payment instruction embedded in the signed message, and the `transactionMaxFee` check is re-applied before broadcasting.
+     * @note When an already-signed transaction is passed, the paymaster has already co-signed it at sign time, so it is not contacted again and the transaction is broadcast directly to the network. The returned `fee` is decoded from the gasless payment instruction embedded in the signed message, and the `transactionMaxFee` check is re-applied before broadcasting. The `paymasterToken` option must name the same token the transaction was signed with.
      */
     sendTransaction(tx: SolanaTransaction | FullySignedTransaction, config?: SolanaGaslessWalletPaymasterConfigOverrides): Promise<TransactionResult>;
     /**
@@ -78,7 +78,7 @@ export default class WalletAccountSolanaGasless extends WalletAccountReadOnlySol
      * @param {SolanaTransaction | FullySignedTransaction} tx - The transaction. Either an unsigned transaction or an already-signed transaction (as returned by `signTransaction`).
      * @param {SolanaGaslessWalletPaymasterConfigOverrides} [config] - If set, overrides the given configuration options.
      * @returns {Promise<Omit<TransactionResult, 'hash'>>} The transaction's quotes.
-     * @note When an already-signed transaction is passed, the returned `fee` is decoded from the gasless payment instruction embedded in the signed message (matching `sendTransaction`).
+     * @note When an already-signed transaction is passed, the returned `fee` is decoded from the gasless payment instruction embedded in the signed message (matching `sendTransaction`). The `paymasterToken` option must name the same token the transaction was signed with.
      */
     quoteSendTransaction(tx: SolanaTransaction | FullySignedTransaction, config?: SolanaGaslessWalletPaymasterConfigOverrides): Promise<Omit<TransactionResult, "hash">>;
     /**
