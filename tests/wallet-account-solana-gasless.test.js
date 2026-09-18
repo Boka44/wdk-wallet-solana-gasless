@@ -16,6 +16,8 @@
 
 import { describe, test, expect, beforeEach, afterEach, jest } from '@jest/globals'
 
+import { NoSuchElementError } from '@tetherto/wdk-wallet'
+
 import { getBase64EncodedWireTransaction, getTransactionDecoder, isFullySignedTransaction } from '@solana/transactions'
 import { address, getBase64Encoder } from '@solana/kit'
 import { findAssociatedTokenPda, getTransferInstruction, TOKEN_PROGRAM_ADDRESS } from '@solana-program/token'
@@ -702,10 +704,13 @@ describe('WalletAccountSolanaGasless', () => {
         value: 1000000n
       })
 
-      await expect(account.sendTransaction(signedTx, {
+      const sending = account.sendTransaction(signedTx, {
         paymasterToken: { address: TEST_PAYMASTER_TOKEN_OVERRIDE },
         transactionMaxFee: 0n
-      })).rejects.toThrow('No gasless payment instruction found for the given paymaster token.')
+      })
+
+      await expect(sending).rejects.toThrow(NoSuchElementError)
+      await expect(sending).rejects.toThrow('No gasless payment instruction found for the given paymaster token.')
       expect(mockRpc.sendTransaction).not.toHaveBeenCalled()
     })
   })
@@ -761,8 +766,10 @@ describe('WalletAccountSolanaGasless', () => {
         value: 1000000n
       }, { paymasterToken: { address: TEST_PAYMASTER_TOKEN_OVERRIDE } })
 
-      await expect(account.quoteSendTransaction(signedTx))
-        .rejects.toThrow('No gasless payment instruction found for the given paymaster token.')
+      const quoting = account.quoteSendTransaction(signedTx)
+
+      await expect(quoting).rejects.toThrow(NoSuchElementError)
+      await expect(quoting).rejects.toThrow('No gasless payment instruction found for the given paymaster token.')
     })
   })
 
