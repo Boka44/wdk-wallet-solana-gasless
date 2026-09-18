@@ -42,6 +42,5 @@ export {
   NoSuchElementError,
   ProviderRequiredError,
   TimeoutError,
-  ValueError,
-  WdkError
+  ValueError
 } from '@tetherto/wdk-wallet'
