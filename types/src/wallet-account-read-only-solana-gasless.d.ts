@@ -237,6 +237,10 @@ export type SolanaGaslessWalletPaymasterConfig = {
      */
     paymasterUrl: string | KoraClientOptions | (string | KoraClientOptions)[];
     /**
+     * - An already-built paymaster client, reused as-is. Lets a manager share a single client across all the accounts it creates.
+     */
+    paymaster?: KoraClient;
+    /**
      * - The address of the paymaster program.
      */
     paymasterAddress: string;
