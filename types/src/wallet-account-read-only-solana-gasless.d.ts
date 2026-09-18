@@ -130,6 +130,15 @@ export default class WalletAccountReadOnlySolanaGasless extends WalletAccountRea
     protected static _validateConfig (config: Omit<SolanaGaslessWalletConfig, 'transferMaxFee'>): void
 
     /**
+     * Builds the paymaster client from the wallet configuration: an already-built {@link KoraClient}
+     * reused as-is, a paymaster url or client options, or a failover list of either.
+     *
+     * @protected
+     * @param {Omit<SolanaGaslessWalletConfig, 'transferMaxFee' | 'transactionMaxFee'>} [config] - The configuration object.
+     * @returns {KoraClient | undefined} The paymaster client, or undefined if none is configured.
+     */
+    protected static _buildPaymaster (config?: Omit<SolanaGaslessWalletConfig, 'transferMaxFee' | 'transactionMaxFee'>): KoraClient | undefined
+    /**
      * Creates a FailoverProvider from the configured providers. If only one provider is supplied, it is wrapped and returned.
      *
      * @protected
