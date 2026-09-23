@@ -16,6 +16,8 @@
 
 import { describe, test, expect, beforeEach, afterEach, jest } from '@jest/globals'
 
+import { DisposalError } from '@tetherto/wdk-wallet'
+
 import { getBase64EncodedWireTransaction, getTransactionDecoder, isFullySignedTransaction } from '@solana/transactions'
 import { address, getBase64Encoder } from '@solana/kit'
 import { findAssociatedTokenPda, getTransferInstruction, TOKEN_PROGRAM_ADDRESS } from '@solana-program/token'
@@ -320,6 +322,21 @@ describe('WalletAccountSolanaGasless', () => {
           '5a84997ab4e543bd48a39f6aab2db7c0816f958167a56d4a9da0fd7b58517324'
         )
       })
+
+      test('should expose the disposed state and be idempotent', async () => {
+        const tempWallet = new WalletManagerSolanaGasless(
+          TEST_SEED_PHRASE,
+          TEST_CONFIG
+        )
+        const tempAccount = await tempWallet.getAccount(97)
+
+        expect(tempAccount.disposed).toBe(false)
+
+        tempAccount.dispose()
+
+        expect(tempAccount.disposed).toBe(true)
+        expect(() => tempAccount.dispose()).not.toThrow()
+      })
     })
 
   describe('sign', () => {
@@ -358,7 +375,7 @@ describe('WalletAccountSolanaGasless', () => {
 
         await expect(
           tempAccount.sign('test message')
-        ).rejects.toThrow('The wallet account has been disposed.')
+        ).rejects.toThrow(DisposalError)
       })
   })
 
@@ -376,7 +393,7 @@ describe('WalletAccountSolanaGasless', () => {
             to: TEST_RECIPIENT_ADDRESS,
             value: 1000n
           })
-        ).rejects.toThrow(/byteLength/)
+        ).rejects.toThrow(DisposalError)
     })
 
     test('should successfully send a transaction', async () => {
