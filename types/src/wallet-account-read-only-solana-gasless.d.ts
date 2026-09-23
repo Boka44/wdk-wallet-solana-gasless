@@ -131,22 +131,26 @@ export default class WalletAccountReadOnlySolanaGasless extends WalletAccountRea
 
     /**
      * Builds the paymaster client from the wallet configuration: an already-built {@link KoraClient}
-     * reused as-is, a paymaster url or client options, or a failover list of either.
+     * (or failover wrapper) reused as-is, a paymaster url or client options, or a failover list of any
+     * of these. Passing an already-built client is what lets a manager share a single instance across
+     * every account it creates.
      *
      * @protected
      * @param {Omit<SolanaGaslessWalletConfig, 'transferMaxFee' | 'transactionMaxFee'>} [config] - The configuration object.
-     * @returns {KoraClient | undefined} The paymaster client, or undefined if none is configured.
+     * @returns {KoraClient} The paymaster client.
+     * @throws {Error} If the `paymasterUrl` option is set to an empty list.
      */
-    protected static _buildPaymaster (config?: Omit<SolanaGaslessWalletConfig, 'transferMaxFee' | 'transactionMaxFee'>): KoraClient | undefined
+    protected static _buildPaymaster (config?: Omit<SolanaGaslessWalletConfig, 'transferMaxFee' | 'transactionMaxFee'>): KoraClient
     /**
-     * Creates a FailoverProvider from the configured providers. If only one provider is supplied, it is wrapped and returned.
+     * Checks whether a value is an already-built {@link KoraClient} (or a failover wrapper around one),
+     * as opposed to a url string or client options. Detection is by shape so a failover `Proxy` is
+     * recognized too.
      *
      * @protected
-     * @param {Omit<SolanaGaslessWalletConfig, 'transferMaxFee'>} [config] - The configuration object.
-     * @returns {KoraClient} A wrapped KoraClient instance.
-     * @throws {ConfigurationError} If the `paymasterUrl` option is set to an empty array.
+     * @param {unknown} value - The value to check.
+     * @returns {boolean} `true` if the value is an already-built kora client.
      */
-    protected _createFailoverProvider (config?: Omit<SolanaGaslessWalletConfig, 'transferMaxFee'>): KoraClient
+    protected static _isKoraClient (value: unknown): boolean
     /**
      * Builds a transaction message for native SOL transfer.
      * Creates a transfer instruction for sending SOL.
@@ -242,13 +246,9 @@ export type PaymasterTokenConfig = {
 };
 export type SolanaGaslessWalletPaymasterConfig = {
     /**
-     * - The paymaster RPC url, client options, or failover list.
+     * - The paymaster RPC url, client options, an already-built kora client, or failover list. An already-built client (or failover wrapper) is reused as-is, so a manager can share a single instance across every account it creates.
      */
-    paymasterUrl: string | KoraClientOptions | (string | KoraClientOptions)[];
-    /**
-     * - An already-built paymaster client, reused as-is. Lets a manager share a single client across all the accounts it creates.
-     */
-    paymaster?: KoraClient;
+    paymasterUrl: string | KoraClientOptions | KoraClient | (string | KoraClientOptions | KoraClient)[];
     /**
      * - The address of the paymaster program.
      */

@@ -25,9 +25,9 @@ export default class WalletManagerSolanaGasless extends WalletManager {
      * The paymaster client. Shared with every account this manager creates.
      *
      * @protected
-     * @type {KoraClient | undefined}
+     * @type {KoraClient}
      */
-    protected _paymaster: KoraClient | undefined;
+    protected _paymaster: KoraClient;
     /**
      * Returns the wallet account at a specific index (see [SLIP-0010](https://slips.readthedocs.io/en/latest/slip-0010/)).
      *

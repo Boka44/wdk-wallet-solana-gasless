@@ -57,7 +57,7 @@ export default class WalletManagerSolanaGasless extends WalletManager {
      * The paymaster client. Shared with every account this manager creates.
      *
      * @protected
-     * @type {KoraClient | undefined}
+     * @type {KoraClient}
      */
     this._paymaster = WalletAccountReadOnlySolanaGasless._buildPaymaster(config)
   }
@@ -102,6 +102,6 @@ export default class WalletManagerSolanaGasless extends WalletManager {
    * @returns {SolanaGaslessWalletConfig} The account configuration.
    */
   _accountConfig () {
-    return { ...this._config, provider: this._rpc, paymaster: this._paymaster }
+    return { ...this._config, provider: this._rpc, paymasterUrl: this._paymaster }
   }
 }
