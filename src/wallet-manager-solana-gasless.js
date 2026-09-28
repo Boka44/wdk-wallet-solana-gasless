@@ -30,7 +30,7 @@ export default class WalletManagerSolanaGasless extends WalletManager {
   /**
    * Creates a new wallet manager for the gasless solana.
    *
-   * @param {string | Uint8Array} seed - The wallet's [BIP-39](https://github.com/bitcoin/bips/blob/master/bip-0039.mediawiki) seed phrase.
+   * @param {string | Uint8Array} seed - A [BIP-39](https://github.com/bitcoin/bips/blob/master/bip-0039.mediawiki) mnemonic seed phrase, or a raw BIP-32 master seed (16-64 bytes).
    * @param {SolanaGaslessWalletConfig} [config] - The configuration object.
    */
   constructor (seed, config = {}) {
@@ -57,7 +57,7 @@ export default class WalletManagerSolanaGasless extends WalletManager {
      * The paymaster client. Shared with every account this manager creates.
      *
      * @protected
-     * @type {KoraClient | undefined}
+     * @type {KoraClient}
      */
     this._paymaster = WalletAccountReadOnlySolanaGasless._buildPaymaster(config)
   }
@@ -102,6 +102,6 @@ export default class WalletManagerSolanaGasless extends WalletManager {
    * @returns {SolanaGaslessWalletConfig} The account configuration.
    */
   _accountConfig () {
-    return { ...this._config, provider: this._rpc, paymaster: this._paymaster }
+    return { ...this._config, provider: this._rpc, paymasterUrl: this._paymaster }
   }
 }

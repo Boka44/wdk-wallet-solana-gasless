@@ -61,7 +61,7 @@ export default class WalletAccountReadOnlySolanaGasless extends WalletAccountRea
      * Returns the account's balance for the paymaster token provided in the wallet account configuration.
      *
      * @returns {Promise<bigint>} The paymaster token balance (in base unit).
-     * @throws {Error} If no paymaster token is configured (sponsored or native-coins mode).
+     * @throws {ValueError} If no paymaster token is configured (sponsored or native-coins mode).
      */
     getPaymasterTokenBalance(): Promise<bigint>;
     /**
@@ -124,29 +124,33 @@ export default class WalletAccountReadOnlySolanaGasless extends WalletAccountRea
      *
      * @protected
      * @param {Omit<SolanaGaslessWalletConfig, 'transferMaxFee'>} config - The configuration to validate.
-     * @throws {ConfigurationError} If the configuration is invalid or has missing required fields.
+     * @throws {ValueError} If the configuration is invalid or has missing required fields.
      * @returns {void}
      */
     protected static _validateConfig (config: Omit<SolanaGaslessWalletConfig, 'transferMaxFee'>): void
 
     /**
      * Builds the paymaster client from the wallet configuration: an already-built {@link KoraClient}
-     * reused as-is, a paymaster url or client options, or a failover list of either.
+     * (or failover wrapper) reused as-is, a paymaster url or client options, or a failover list of any
+     * of these. Passing an already-built client is what lets a manager share a single instance across
+     * every account it creates.
      *
      * @protected
      * @param {Omit<SolanaGaslessWalletConfig, 'transferMaxFee' | 'transactionMaxFee'>} [config] - The configuration object.
-     * @returns {KoraClient | undefined} The paymaster client, or undefined if none is configured.
+     * @returns {KoraClient} The paymaster client.
+     * @throws {ValueError} If the `paymasterUrl` option is set to an empty list.
      */
-    protected static _buildPaymaster (config?: Omit<SolanaGaslessWalletConfig, 'transferMaxFee' | 'transactionMaxFee'>): KoraClient | undefined
+    protected static _buildPaymaster (config?: Omit<SolanaGaslessWalletConfig, 'transferMaxFee' | 'transactionMaxFee'>): KoraClient
     /**
-     * Creates a FailoverProvider from the configured providers. If only one provider is supplied, it is wrapped and returned.
+     * Checks whether a value is an already-built {@link KoraClient} (or a failover wrapper around one),
+     * as opposed to a url string or client options. Detection is by shape so a failover `Proxy` is
+     * recognized too.
      *
      * @protected
-     * @param {Omit<SolanaGaslessWalletConfig, 'transferMaxFee'>} [config] - The configuration object.
-     * @returns {KoraClient} A wrapped KoraClient instance.
-     * @throws {ConfigurationError} If the `paymasterUrl` option is set to an empty array.
+     * @param {unknown} value - The value to check.
+     * @returns {boolean} `true` if the value is an already-built kora client.
      */
-    protected _createFailoverProvider (config?: Omit<SolanaGaslessWalletConfig, 'transferMaxFee'>): KoraClient
+    protected static _isKoraClient (value: unknown): boolean
     /**
      * Builds a transaction message for native SOL transfer.
      * Creates a transfer instruction for sending SOL.
@@ -166,6 +170,7 @@ export default class WalletAccountReadOnlySolanaGasless extends WalletAccountRea
      * @param {string} recipient - The recipient's wallet address (base58-encoded public key).
      * @param {number | bigint} amount - The amount to transfer in token's base units (must be ≤ 2^64-1).
      * @returns {Promise<TransactionMessage>} The constructed transaction message.
+     * @throws {ValueError} If the amount exceeds the representable range.
      * @todo Support Token-2022 (Token Extensions Program).
      * @todo Support transfer with memo for tokens that require it.
      */
@@ -184,7 +189,7 @@ export default class WalletAccountReadOnlySolanaGasless extends WalletAccountRea
      * @protected
      * @param {SolanaTransaction} tx - The transaction.
      * @returns {Promise<void>} Resolves when the transaction has no explicit fee payer or it matches the paymaster address.
-     * @throws {Error} If the transaction fee payer does not match the paymaster address.
+     * @throws {ValueError} If the transaction fee payer does not match the paymaster address.
      */
     protected _assertFeePayer(tx: SolanaTransaction): Promise<void>;
     /**
@@ -194,9 +199,18 @@ export default class WalletAccountReadOnlySolanaGasless extends WalletAccountRea
      * @param {TransactionMessage} transactionMessage - The transaction message to fetch the payment info.
      * @param {SolanaGaslessWalletPaymasterConfigOverrides} [config] - If set, overrides the given configuration options.
      * @returns {Promise<GetPaymentInstructionResponse>} The payment info.
-     * @throws {Error} If the paymaster payment instruction is not a recognized SPL transfer to the paymaster token account.
      */
     protected _getTransactionPaymentInfo(transactionMessage: TransactionMessage, config?: SolanaGaslessWalletPaymasterConfigOverrides): Promise<GetPaymentInstructionResponse>;
+    /**
+     * Merges a caller's configuration overrides on top of the account's configuration. Keys whose
+     * override value is `undefined` keep the configured value, so an option left unset in an
+     * override object does not erase it.
+     *
+     * @protected
+     * @param {SolanaGaslessWalletPaymasterConfigOverrides} config - The configuration overrides.
+     * @returns {Omit<SolanaGaslessWalletConfig, 'transferMaxFee' | 'transactionMaxFee'> & SolanaGaslessWalletPaymasterConfigOverrides} The merged configuration.
+     */
+    protected _mergeConfig(config: SolanaGaslessWalletPaymasterConfigOverrides): Omit<SolanaGaslessWalletConfig, "transferMaxFee" | "transactionMaxFee"> & SolanaGaslessWalletPaymasterConfigOverrides;
     /**
      * @protected
      * @param {string} [paymasterTokenAddress] - The paymaster fee token mint.
@@ -215,7 +229,7 @@ export default class WalletAccountReadOnlySolanaGasless extends WalletAccountRea
      * @param {object} paymentInstruction - The paymaster payment instruction.
      * @param {string} paymasterTokenAccount - The paymaster associated token account.
      * @returns {bigint} The transfer amount encoded in the instruction.
-     * @throws {Error} If the instruction is not a recognized SPL transfer to the paymaster token account.
+     * @throws {ValueError} If the instruction is not a recognized SPL transfer to the paymaster token account.
      */
     protected _getPaymentInstructionAmount(paymentInstruction: object, paymasterTokenAccount: string): bigint;
 }
@@ -232,7 +246,6 @@ export type SolanaTransaction = import("@tetherto/wdk-wallet-solana").SolanaTran
 export type SolanaWalletConfig = import("@tetherto/wdk-wallet-solana").SolanaWalletConfig;
 export type TransferOptions = import("@tetherto/wdk-wallet-solana").TransferOptions;
 export type TransferResult = import("@tetherto/wdk-wallet-solana").TransferResult;
-import { ConfigurationError } from './errors.js';
 export type SolanaTransactionDetails = import("@tetherto/wdk-wallet-solana").SolanaTransactionDetails;
 export type PaymasterTokenConfig = {
     /**
@@ -242,13 +255,9 @@ export type PaymasterTokenConfig = {
 };
 export type SolanaGaslessWalletPaymasterConfig = {
     /**
-     * - The paymaster RPC url, client options, or failover list.
+     * - The paymaster RPC url, client options, an already-built kora client, or failover list. An already-built client (or failover wrapper) is reused as-is, so a manager can share a single instance across every account it creates.
      */
-    paymasterUrl: string | KoraClientOptions | (string | KoraClientOptions)[];
-    /**
-     * - An already-built paymaster client, reused as-is. Lets a manager share a single client across all the accounts it creates.
-     */
-    paymaster?: KoraClient;
+    paymasterUrl: string | KoraClientOptions | KoraClient | (string | KoraClientOptions | KoraClient)[];
     /**
      * - The address of the paymaster program.
      */
@@ -260,5 +269,5 @@ export type SolanaGaslessWalletPaymasterConfig = {
 };
 export type SolanaGaslessWalletPaymasterConfigOverrides = Partial<Pick<SolanaGaslessWalletPaymasterConfig, "paymasterToken"> & Pick<SolanaWalletConfig, "transferMaxFee" | "transactionMaxFee">>;
 export type SolanaGaslessWalletConfig = SolanaWalletConfig & SolanaGaslessWalletPaymasterConfig;
-import { WalletAccountReadOnly } from '@tetherto/wdk-wallet';
+import { WalletAccountReadOnly, ValueError } from '@tetherto/wdk-wallet';
 import { KoraClient } from '@solana/kora';
