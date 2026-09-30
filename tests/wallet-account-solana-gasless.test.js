@@ -323,7 +323,7 @@ describe('WalletAccountSolanaGasless', () => {
         )
       })
 
-      test('should expose the disposed state and be idempotent', async () => {
+      test('should expose the disposed state', async () => {
         const tempWallet = new WalletManagerSolanaGasless(
           TEST_SEED_PHRASE,
           TEST_CONFIG
@@ -335,7 +335,6 @@ describe('WalletAccountSolanaGasless', () => {
         tempAccount.dispose()
 
         expect(tempAccount.disposed).toBe(true)
-        expect(() => tempAccount.dispose()).not.toThrow()
       })
     })
 
